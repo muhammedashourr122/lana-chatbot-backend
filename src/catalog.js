@@ -56,11 +56,14 @@ function normalizeProduct(product) {
       ? salePrice
       : price;
 
-  return {
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    sku: product.sku || null,
+return {
+  id: product.id,
+  name: product.name,
+  slug: product.slug,
+  url: product.slug
+    ? `https://www.lana-beauty.com/products/${product.slug}`
+    : null,
+  sku: product.sku || null,
 
     price,
     salePrice,
