@@ -201,33 +201,41 @@ async function chat(message) {
    * Otherwise words like "عايز" / "حاجة" can accidentally
    * return unrelated catalog products.
    */
-  if (!category && (intent === "search" || intent === "recommend")) {
-    const searchableText = text
-      .split(/\s+/)
-      .filter((word) => word.length >= 3);
+if (!category && (intent === "search" || intent === "recommend")) {
+  const searchableText = text
+    .split(/\s+/)
+    .map((word) => word.trim())
+    .filter((word) => word.length >= 3);
 
-    if (searchableText.length > 0) {
-      const searched = [];
+  if (searchableText.length > 0) {
+    const searched = [];
 
-      for (const word of searchableText) {
-        const results = await searchProducts(word);
+    for (const word of searchableText) {
+      const results = await searchProducts(word);
 
-        for (const product of results) {
-          if (
-            !searched.some(
-              (item) => item.id === product.id
-            )
-          ) {
-            searched.push(product);
-          }
+      for (const product of results) {
+        if (
+          !searched.some(
+            (item) => item.id === product.id
+          )
+        ) {
+          searched.push(product);
         }
       }
-
-      if (searched.length > 0) {
-        products = searched;
-      }
     }
+
+    /*
+     * IMPORTANT:
+     * If the user entered a search term and
+     * nothing matched, return ZERO products.
+     *
+     * Do NOT fall back to the entire catalog.
+     */
+    products = searched;
+  } else {
+    products = [];
   }
+}
 
   if (budget) {
     const budgetProducts = products.filter(
