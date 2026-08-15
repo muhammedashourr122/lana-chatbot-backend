@@ -61,8 +61,8 @@ return {
   name: product.name,
   slug: product.slug,
   url: product.slug
-    ? `https://www.lana-beauty.com/products/${product.slug}`
-    : null,
+  ? `https://www.lana-beauty.com/products/${product.slug}`
+  : null,
   sku: product.sku || null,
 
     price,
