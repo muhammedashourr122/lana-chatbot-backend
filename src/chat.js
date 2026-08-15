@@ -24,6 +24,7 @@ function formatProduct(product) {
     inStock: product.inStock,
     quantity: product.quantity,
     image: product.image,
+url: product.url,
     description: product.shortDescription,
     categories: product.categories.map(
       (category) => category.name
