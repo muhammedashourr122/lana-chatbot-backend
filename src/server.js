@@ -1,8 +1,10 @@
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const webhooksRouter = require("./routes/webhooks");
+const catalogRouter = require("./routes/catalog");
+const chatRouter = require("./routes/chat");
 
 const {
   getProducts,
@@ -33,6 +35,8 @@ app.use(
 app.use(express.json());
 
 app.use("/api/webhooks", webhooksRouter);
+app.use("/api/catalog", catalogRouter);
+app.use("/api/chat", chatRouter);
 
 app.get("/health", (req, res) => {
   res.json({
@@ -113,3 +117,5 @@ app.use((error, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Lana backend running on port ${PORT}`);
 });
+
+
