@@ -42,9 +42,18 @@ async function getOrder(orderId) {
   return easyOrdersGet(`/orders/${orderId}`);
 }
 
+async function getOrderByShortId(shortId) {
+  if (!shortId) {
+    throw new Error("shortId is required");
+  }
+
+  return easyOrdersGet(`/orders/short/${shortId}`);
+}
+
 module.exports = {
   easyOrdersGet,
   getProducts,
   getCategories,
   getOrder,
+  getOrderByShortId,
 };

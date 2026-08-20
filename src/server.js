@@ -10,7 +10,15 @@ const {
   getProducts,
   getCategories,
   getOrder,
+  getOrderByShortId,
 } = require("./easyorders");
+
+function normalizePhone(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  // Compare the last 9 digits so 01222226107, 201222226107,
+  // +201222226107, 00201222226107 etc. all match.
+  return digits.slice(-9);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -101,6 +109,56 @@ app.get("/api/orders/:id", async (req, res) => {
     res.status(error.response?.status || 500).json({
       success: false,
       error: "Unable to load order",
+    });
+  }
+});
+
+app.get("/api/track-order", async (req, res) => {
+  try {
+    const orderNumber = String(req.query.order_number || "").trim();
+    const phone = String(req.query.phone || "").trim();
+
+    if (!orderNumber || !phone) {
+      return res.status(400).json({
+        success: false,
+        error: "order_number and phone are required",
+      });
+    }
+
+    const order = await getOrderByShortId(orderNumber);
+
+    const genericError = () =>
+      res.status(404).json({
+        success: false,
+        error: "No order found matching that order number and phone number",
+      });
+
+    if (!order || !order.id) return genericError();
+
+    if (normalizePhone(order.phone) !== normalizePhone(phone)) {
+      return genericError();
+    }
+
+    res.json({
+      success: true,
+      order_id: order.id,
+    });
+  } catch (error) {
+    console.error(
+      "Track order error:",
+      error.response?.data || error.message
+    );
+
+    if (error.response?.status === 404) {
+      return res.status(404).json({
+        success: false,
+        error: "No order found matching that order number and phone number",
+      });
+    }
+
+    res.status(error.response?.status || 500).json({
+      success: false,
+      error: "Unable to look up order",
     });
   }
 });
