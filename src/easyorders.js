@@ -39,6 +39,19 @@ async function easyOrdersPatch(path, body = {}) {
   return response.data;
 }
 
+async function easyOrdersPost(path, body = {}) {
+  const response = await axios.post(`${BASE_URL}${path}`, body, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "Api-Key": getApiKey(),
+    },
+    timeout: 15000,
+  });
+
+  return response.data;
+}
+
 async function getProducts(params = {}) {
   return easyOrdersGet("/products/", params);
 }
@@ -74,12 +87,35 @@ async function updateOrderStatus(orderId, status) {
   return easyOrdersPatch(`/orders/${orderId}/status`, { status });
 }
 
+async function addOrderNote(orderId, note, type = "public") {
+  if (!orderId) {
+    throw new Error("orderId is required");
+  }
+  if (!note) {
+    throw new Error("note is required");
+  }
+
+  const storeId = process.env.EASYORDERS_STORE_ID;
+  if (!storeId) {
+    throw new Error("EASYORDERS_STORE_ID is missing from .env");
+  }
+
+  return easyOrdersPost("/order-notes", {
+    order_id: orderId,
+    store_id: storeId,
+    note,
+    type,
+  });
+}
+
 module.exports = {
   easyOrdersGet,
   easyOrdersPatch,
+  easyOrdersPost,
   getProducts,
   getCategories,
   getOrder,
   getOrderByShortId,
   updateOrderStatus,
+  addOrderNote,
 };

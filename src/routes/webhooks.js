@@ -1,5 +1,5 @@
 const express = require("express");
-const { updateOrderStatus } = require("../easyorders");
+const { updateOrderStatus, addOrderNote } = require("../easyorders");
 
 const router = express.Router();
 
@@ -30,6 +30,32 @@ const BOSTA_STATE_TO_EASYORDERS_STATUS = {
   101: "canceled",          // Damaged
   // 102 Investigation, 103 Awaiting your action, 104 Archived,
   // 105 On hold: intentionally no-op, these need human review.
+};
+
+const BOSTA_STATE_NAMES = {
+  10: "Pickup requested",
+  11: "Waiting for route",
+  20: "Route Assigned",
+  21: "Picked up from business",
+  22: "Picking up from consignee",
+  23: "Picked up from consignee",
+  24: "Received at warehouse",
+  25: "Fulfilled",
+  30: "In transit between Hubs",
+  40: "Picking up",
+  41: "Picked up",
+  45: "Delivered",
+  46: "Returned to business",
+  47: "Exception",
+  48: "Terminated",
+  49: "Canceled",
+  60: "Returned to stock",
+  100: "Lost",
+  101: "Damaged",
+  102: "Investigation",
+  103: "Awaiting your action",
+  104: "Archived",
+  105: "On hold",
 };
 
 router.post("/easyorders", (req, res) => {
@@ -85,6 +111,20 @@ router.post("/bosta", async (req, res) => {
   }
 
   const newStatus = BOSTA_STATE_TO_EASYORDERS_STATUS[Number(state)];
+  const stateName = BOSTA_STATE_NAMES[Number(state)] || `state ${state}`;
+
+  if (trackingNumber) {
+    try {
+      const noteText = `Bosta update: ${stateName}. Tracking #${trackingNumber}.`;
+      await addOrderNote(businessReference, noteText, "public");
+    } catch (error) {
+      console.error(
+        "Failed to add Bosta tracking note:",
+        error.response?.data || error.message
+      );
+      // Non-fatal — still proceed to try the status update below.
+    }
+  }
 
   if (!newStatus) {
     console.log(`Bosta state ${state} has no mapped Easy Orders status — no-op.`);
