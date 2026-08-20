@@ -1,5 +1,6 @@
 const express = require("express");
 const { updateOrderStatus, addOrderNote } = require("../easyorders");
+const { addTrackingEvent } = require("../tracking-store");
 
 const router = express.Router();
 
@@ -112,6 +113,17 @@ router.post("/bosta", async (req, res) => {
 
   const newStatus = BOSTA_STATE_TO_EASYORDERS_STATUS[Number(state)];
   const stateName = BOSTA_STATE_NAMES[Number(state)] || `state ${state}`;
+
+  try {
+    await addTrackingEvent(businessReference, {
+      state: Number(state),
+      stateName,
+      trackingNumber: trackingNumber || null,
+    });
+  } catch (error) {
+    console.error("Failed to store tracking event in Upstash:", error.message);
+    // Non-fatal — still proceed with the note/status update below.
+  }
 
   if (trackingNumber) {
     try {

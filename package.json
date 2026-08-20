@@ -11,6 +11,7 @@
   "author": "Lana's Beauty",
   "license": "ISC",
   "dependencies": {
+    "@upstash/redis": "^1.38.2",
     "axios": "^1.19.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

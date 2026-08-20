@@ -12,6 +12,7 @@ const {
   getOrder,
   getOrderByShortId,
 } = require("./easyorders");
+const { getTrackingEvents } = require("./tracking-store");
 
 function normalizePhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -160,6 +161,16 @@ app.get("/api/track-order", async (req, res) => {
       success: false,
       error: "Unable to look up order",
     });
+  }
+});
+
+app.get("/api/tracking-events/:orderId", async (req, res) => {
+  try {
+    const events = await getTrackingEvents(req.params.orderId);
+    res.json({ success: true, events });
+  } catch (error) {
+    console.error("Tracking events error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load tracking events" });
   }
 });
 
