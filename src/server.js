@@ -463,6 +463,30 @@ app.get("/admin/dashboard", (req, res) => {
   .two-col > div { flex: 1; min-width: 240px; }
   #export-btn { background: none; border: 1px solid #6C4452; color: #6C4452; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; margin-bottom: 8px; }
   #refresh-note { font-size: 11px; color: #8b7d82; margin-top: 4px; }
+  .controls-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0 12px; font-size: 13px; }
+  .controls-row select { padding: 6px 10px; border: 1px solid #E5E5EF; border-radius: 8px; font-size: 13px; }
+  .controls-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { opacity: 0.8; }
+  th.sortable .arrow { opacity: 0.5; font-size: 10px; margin-left: 3px; }
+  tr.order-row { cursor: pointer; }
+  tr.detail-row td { background: #fbf6f2; padding: 14px; }
+  tr.detail-row .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 10px; }
+  tr.detail-row .detail-grid div span { display: block; color: #8b7d82; font-size: 11px; }
+  .status-select { padding: 5px 8px; border: 1px solid #E5E5EF; border-radius: 6px; font-size: 12px; margin-right: 6px; }
+  .status-btn { background: #6C4452; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  @media (max-width: 700px) {
+    table, thead, tbody, th, td, tr { display: block; }
+    thead tr { position: absolute; top: -9999px; left: -9999px; }
+    table tr:not(.detail-row) { border: 1px solid #eee; border-radius: 10px; margin-bottom: 10px; padding: 6px 0; }
+    table td { border: none; position: relative; padding-left: 46%; }
+    table td:before {
+      position: absolute; left: 14px; width: 40%; white-space: nowrap;
+      content: attr(data-label); font-weight: 600; color: #6C4452; font-size: 11px;
+    }
+    tr.detail-row td { padding-left: 14px; }
+    tr.detail-row td:before { content: none; }
+  }
 </style>
 </head>
 <body>
@@ -480,6 +504,20 @@ app.get("/admin/dashboard", (req, res) => {
 <script>
   var DASHBOARD_KEY = ${JSON.stringify(key)};
   var lastData = null;
+  var state = {
+    dateRange: "all",
+    sortKey: "created_at",
+    sortDir: "desc",
+    attentionOnly: false,
+    expandedOrderId: null,
+  };
+
+  function withinDateRange(dateStr) {
+    if (state.dateRange === "all" || !dateStr) return true;
+    var days = state.dateRange === "today" ? 1 : state.dateRange === "7d" ? 7 : 30;
+    var cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    return new Date(dateStr).getTime() >= cutoff;
+  }
 
   function callLink(phone) {
     if (!phone) return '—';
@@ -540,10 +578,11 @@ app.get("/admin/dashboard", (req, res) => {
       });
   });
 
-  function loadDashboard() {
-    fetch("/api/admin/delivery-dashboard?key=" + encodeURIComponent(DASHBOARD_KEY))
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
+  function renderFromCache() {
+    if (lastData) renderDashboard(lastData);
+  }
+
+  function renderDashboard(data) {
         var root = document.getElementById("root");
         if (!data.success) {
           root.innerHTML = '<div class="error">' + (data.error || "Unauthorized") + '</div>';
@@ -569,7 +608,7 @@ app.get("/admin/dashboard", (req, res) => {
         } else {
           topProductsHtml += '<table><tr><th>Product</th><th>Qty Sold</th></tr>';
           data.top_products.forEach(function (p) {
-            topProductsHtml += '<tr><td>' + p.name + '</td><td>' + p.qty + '</td></tr>';
+            topProductsHtml += '<tr><td data-label="Product">' + p.name + '</td><td data-label="Qty">' + p.qty + '</td></tr>';
           });
           topProductsHtml += '</table>';
         }
@@ -581,51 +620,121 @@ app.get("/admin/dashboard", (req, res) => {
         } else {
           govHtml += '<table><tr><th>Governorate</th><th>Orders</th></tr>';
           data.governorates.forEach(function (g) {
-            govHtml += '<tr><td>' + g.name + '</td><td>' + g.count + '</td></tr>';
+            govHtml += '<tr><td data-label="Governorate">' + g.name + '</td><td data-label="Orders">' + g.count + '</td></tr>';
           });
           govHtml += '</table>';
         }
         govHtml += '</div>';
 
-        var deliveryHtml = '<h2>Bosta Delivery Tracking</h2>';
-        if (data.all.length === 0) {
-          deliveryHtml += '<div class="empty">No orders with Bosta tracking events yet.</div>';
+        var deliveryOrders = data.all.filter(function (r) {
+          return withinDateRange(r.created_at) && (!state.attentionOnly || r.delivery.needs_attention);
+        });
+
+        var deliveryHtml = '<h2>Bosta Delivery Tracking</h2>' +
+          '<div class="controls-row">' +
+            '<label><input type="checkbox" id="attention-filter" ' + (state.attentionOnly ? 'checked' : '') + ' /> Needs attention only</label>' +
+          '</div>';
+        if (deliveryOrders.length === 0) {
+          deliveryHtml += '<div class="empty">No matching orders.</div>';
         } else {
-          var rows = data.all.slice().sort(function (a, b) {
+          var rows = deliveryOrders.slice().sort(function (a, b) {
             return (b.delivery.needs_attention ? 1 : 0) - (a.delivery.needs_attention ? 1 : 0);
           });
           deliveryHtml += '<table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
           rows.forEach(function (r) {
             deliveryHtml += '<tr class="' + (r.delivery.needs_attention ? 'attention' : '') + '">' +
-              '<td>' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
-              '<td>' + (r.status || '—') + '</td>' +
-              '<td>' + (r.delivery.latest_state || '—') + '</td>' +
-              '<td>' + (r.delivery.tracking_number || '—') + '</td>' +
-              '<td>' + r.delivery.hours_since_update + 'h</td>' +
-              '<td><span class="badge ' + (r.delivery.needs_attention ? 'attn' : 'ok') + '">' + (r.delivery.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
+              '<td data-label="Order #">' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
+              '<td data-label="Status">' + (r.status || '—') + '</td>' +
+              '<td data-label="Latest State">' + (r.delivery.latest_state || '—') + '</td>' +
+              '<td data-label="Tracking #">' + (r.delivery.tracking_number || '—') + '</td>' +
+              '<td data-label="Updated">' + r.delivery.hours_since_update + 'h ago</td>' +
+              '<td data-label="Flag"><span class="badge ' + (r.delivery.needs_attention ? 'attn' : 'ok') + '">' + (r.delivery.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
               '</tr>';
           });
           deliveryHtml += '</table>';
         }
 
-        var ordersHtml = '<h2>All Orders</h2><button id="export-btn">Export CSV</button>';
-        if (data.orders.length === 0) {
-          ordersHtml += '<div class="empty">No orders tracked yet.</div>';
+        var filteredOrders = data.orders.filter(function (o) {
+          return withinDateRange(o.created_at);
+        });
+
+        var sortKeyFns = {
+          created_at: function (o) { return new Date(o.created_at || 0).getTime(); },
+          short_id: function (o) { return o.short_id || 0; },
+          total_cost: function (o) { return o.total_cost || 0; },
+          status: function (o) { return o.status || ""; },
+          full_name: function (o) { return o.full_name || ""; },
+        };
+        var sortFn = sortKeyFns[state.sortKey] || sortKeyFns.created_at;
+        var sortedOrders = filteredOrders.slice().sort(function (a, b) {
+          var av = sortFn(a), bv = sortFn(b);
+          var cmp = av < bv ? -1 : av > bv ? 1 : 0;
+          return state.sortDir === "asc" ? cmp : -cmp;
+        });
+
+        function sortArrow(key) {
+          if (state.sortKey !== key) return "";
+          return '<span class="arrow">' + (state.sortDir === "asc" ? "▲" : "▼") + '</span>';
+        }
+
+        var ordersHtml = '<h2>All Orders (' + filteredOrders.length + ')</h2>' +
+          '<div class="controls-row">' +
+            '<select id="date-range-select">' +
+              '<option value="all"' + (state.dateRange === "all" ? " selected" : "") + '>All time</option>' +
+              '<option value="today"' + (state.dateRange === "today" ? " selected" : "") + '>Today</option>' +
+              '<option value="7d"' + (state.dateRange === "7d" ? " selected" : "") + '>Last 7 days</option>' +
+              '<option value="30d"' + (state.dateRange === "30d" ? " selected" : "") + '>Last 30 days</option>' +
+            '</select>' +
+            '<button id="export-btn">Export CSV</button>' +
+          '</div>';
+        if (filteredOrders.length === 0) {
+          ordersHtml += '<div class="empty">No orders in this range.</div>';
         } else {
-          var sortedOrders = data.orders.slice().sort(function (a, b) {
-            return new Date(b.created_at) - new Date(a.created_at);
-          });
-          ordersHtml += '<table><tr><th>Order #</th><th>Name</th><th>Status</th><th>Total</th><th>Created</th><th>Actions</th></tr>';
+          ordersHtml += '<table><tr>' +
+            '<th class="sortable" data-sort="short_id">Order #' + sortArrow("short_id") + '</th>' +
+            '<th class="sortable" data-sort="full_name">Name' + sortArrow("full_name") + '</th>' +
+            '<th class="sortable" data-sort="status">Status' + sortArrow("status") + '</th>' +
+            '<th class="sortable" data-sort="total_cost">Total' + sortArrow("total_cost") + '</th>' +
+            '<th class="sortable" data-sort="created_at">Created' + sortArrow("created_at") + '</th>' +
+            '<th>Actions</th></tr>';
           sortedOrders.forEach(function (o) {
             var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString() : '—';
-            ordersHtml += '<tr>' +
-              '<td>' + (o.short_id != null ? '#' + o.short_id : o.order_id.slice(0, 8)) + '</td>' +
-              '<td>' + (o.full_name || '—') + '</td>' +
-              '<td>' + (o.status || '—') + '</td>' +
-              '<td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td>' +
-              '<td>' + dateStr + '</td>' +
-              '<td>' + callLink(o.phone) + trackLink(o.order_id) + '</td>' +
+            var isExpanded = state.expandedOrderId === o.order_id;
+            ordersHtml += '<tr class="order-row" data-order-id="' + o.order_id + '">' +
+              '<td data-label="Order #">' + (o.short_id != null ? '#' + o.short_id : o.order_id.slice(0, 8)) + '</td>' +
+              '<td data-label="Name">' + (o.full_name || '—') + '</td>' +
+              '<td data-label="Status">' + (o.status || '—') + '</td>' +
+              '<td data-label="Total">' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td>' +
+              '<td data-label="Created">' + dateStr + '</td>' +
+              '<td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + '</td>' +
               '</tr>';
+
+            if (isExpanded) {
+              var itemsHtml = (o.cart_items || []).map(function (item) {
+                var name = item.product ? item.product.name : "Item";
+                return name + ' × ' + item.quantity + ' (' + item.price + ' EGP)';
+              }).join("<br>") || "—";
+
+              var statusOptionsHtml = ${JSON.stringify(VALID_ORDER_STATUSES)}.map(function (s) {
+                return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + s + '</option>';
+              }).join("");
+
+              ordersHtml += '<tr class="detail-row"><td colspan="6">' +
+                '<div class="detail-grid">' +
+                  '<div><span>Phone</span>' + (o.phone || '—') + '</div>' +
+                  '<div><span>Governorate</span>' + (o.government || '—') + '</div>' +
+                  '<div><span>Address</span>' + (o.address || '—') + '</div>' +
+                  '<div><span>Payment</span>' + (o.payment_method || '—') + '</div>' +
+                  '<div><span>Shipping</span>' + (o.shipping_cost != null ? o.shipping_cost + ' EGP' : '—') + '</div>' +
+                '</div>' +
+                '<div style="margin-bottom:10px;"><span style="display:block;color:#8b7d82;font-size:11px;">Items</span>' + itemsHtml + '</div>' +
+                '<div>' +
+                  '<select class="status-select" data-order-id="' + o.order_id + '">' + statusOptionsHtml + '</select>' +
+                  '<button class="status-btn" data-order-id="' + o.order_id + '">Update Status</button>' +
+                  '<span class="status-msg" data-order-id="' + o.order_id + '" style="margin-left:8px;font-size:12px;"></span>' +
+                '</div>' +
+              '</td></tr>';
+            }
           });
           ordersHtml += '</table>';
         }
@@ -635,7 +744,84 @@ app.get("/admin/dashboard", (req, res) => {
           deliveryHtml + ordersHtml;
 
         document.getElementById("export-btn").addEventListener("click", exportCsv);
-      })
+
+        document.getElementById("date-range-select").addEventListener("change", function (e) {
+          state.dateRange = e.target.value;
+          renderFromCache();
+        });
+
+        var attentionCheckbox = document.getElementById("attention-filter");
+        if (attentionCheckbox) {
+          attentionCheckbox.addEventListener("change", function (e) {
+            state.attentionOnly = e.target.checked;
+            renderFromCache();
+          });
+        }
+
+        document.querySelectorAll("th.sortable").forEach(function (th) {
+          th.addEventListener("click", function () {
+            var key = th.getAttribute("data-sort");
+            if (state.sortKey === key) {
+              state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+            } else {
+              state.sortKey = key;
+              state.sortDir = "asc";
+            }
+            renderFromCache();
+          });
+        });
+
+        document.querySelectorAll("tr.order-row").forEach(function (tr) {
+          tr.addEventListener("click", function (e) {
+            if (e.target.closest(".action-link")) return;
+            var id = tr.getAttribute("data-order-id");
+            state.expandedOrderId = state.expandedOrderId === id ? null : id;
+            renderFromCache();
+          });
+        });
+
+        document.querySelectorAll(".status-btn").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var orderId = btn.getAttribute("data-order-id");
+            var select = document.querySelector('.status-select[data-order-id="' + orderId + '"]');
+            var msg = document.querySelector('.status-msg[data-order-id="' + orderId + '"]');
+            var newStatus = select.value;
+
+            btn.disabled = true;
+            msg.textContent = "Updating…";
+            msg.style.color = "#8b7d82";
+
+            fetch("/api/admin/update-status?key=" + encodeURIComponent(DASHBOARD_KEY), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order_id: orderId, status: newStatus }),
+            })
+              .then(function (res) { return res.json(); })
+              .then(function (data) {
+                btn.disabled = false;
+                if (data.success) {
+                  msg.textContent = "Updated!";
+                  msg.style.color = "#2e7d32";
+                  loadDashboard();
+                } else {
+                  msg.textContent = data.error || "Failed.";
+                  msg.style.color = "#c0392b";
+                }
+              })
+              .catch(function () {
+                btn.disabled = false;
+                msg.textContent = "Failed.";
+                msg.style.color = "#c0392b";
+              });
+          });
+        });
+  }
+
+  function loadDashboard() {
+    fetch("/api/admin/delivery-dashboard?key=" + encodeURIComponent(DASHBOARD_KEY))
+      .then(function (res) { return res.json(); })
+      .then(renderDashboard)
       .catch(function () {
         document.getElementById("root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
       });
