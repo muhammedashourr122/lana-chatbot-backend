@@ -12,6 +12,7 @@ const {
   getOrder,
   getOrderByShortId,
   updateOrderStatus,
+  updateShipping,
 } = require("./easyorders");
 const {
   getTrackingEvents,
@@ -550,6 +551,30 @@ app.post("/api/admin/update-status", async (req, res) => {
   }
 });
 
+app.post("/api/admin/update-shipping", async (req, res) => {
+  try {
+    if (!checkAdminKey(req, res)) return;
+
+    const { cities } = req.body || {};
+    if (!Array.isArray(cities) || cities.length === 0) {
+      return res.status(400).json({ success: false, error: "cities must be a non-empty array" });
+    }
+
+    for (const c of cities) {
+      if (!c.location || typeof c.cost === "undefined" || c.cost === "" || isNaN(Number(c.cost))) {
+        return res.status(400).json({ success: false, error: "Each city needs a location and a numeric cost" });
+      }
+    }
+
+    const normalized = cities.map((c) => ({ location: String(c.location).trim(), cost: Number(c.cost) }));
+    await updateShipping(normalized);
+    res.json({ success: true, cities: normalized });
+  } catch (error) {
+    console.error("Admin shipping update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({ success: false, error: "Failed to update shipping" });
+  }
+});
+
 app.get("/admin/packing-slip/:orderId", async (req, res) => {
   let order;
   try {
@@ -911,6 +936,15 @@ app.get("/admin/dashboard", (req, res) => {
           lowStockHtml += '</table></div></div>';
         }
 
+        var shippingHtml = '<div class="section-card">' +
+          '<h2>Shipping Costs</h2>' +
+          '<p class="empty" style="margin:0 0 12px;">One city per line, format <code>city:cost</code> (e.g. <code>cairo:30</code>). Saving replaces the entire shipping list on Easy Orders.</p>' +
+          '<textarea id="shipping-textarea" rows="6" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:10px;border-radius:8px;border:1px solid #e2d8dc;" placeholder="cairo:30\nalexander:40\ngiza:35"></textarea>' +
+          '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;">' +
+          '<button id="save-shipping-btn" class="btn">Save shipping costs</button>' +
+          '<span id="shipping-msg"></span>' +
+          '</div></div>';
+
         var topProductsHtml = '<div class="section-card"><h2>Top Products</h2>';
         if (data.top_products.length === 0) {
           topProductsHtml += '<div class="empty">No product data yet.</div>';
@@ -1066,11 +1100,61 @@ app.get("/admin/dashboard", (req, res) => {
         }
         ordersHtml += '</div>';
 
-        root.innerHTML = statsHtml + statusHtml + revenueChartHtml + stuckPaymentsHtml + lowStockHtml +
+        root.innerHTML = statsHtml + statusHtml + revenueChartHtml + stuckPaymentsHtml + lowStockHtml + shippingHtml +
           '<div class="two-col">' + topProductsHtml + govHtml + '</div>' +
           deliveryHtml + ordersHtml;
 
         document.getElementById("export-btn").addEventListener("click", exportCsv);
+
+        document.getElementById("save-shipping-btn").addEventListener("click", function () {
+          var textarea = document.getElementById("shipping-textarea");
+          var msg = document.getElementById("shipping-msg");
+          var lines = textarea.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+
+          if (lines.length === 0) {
+            msg.textContent = "Add at least one city:cost line.";
+            msg.style.color = "#c0392b";
+            return;
+          }
+
+          var cities = [];
+          for (var i = 0; i < lines.length; i++) {
+            var parts = lines[i].split(":");
+            if (parts.length !== 2 || !parts[0].trim() || isNaN(Number(parts[1].trim()))) {
+              msg.textContent = 'Invalid line: "' + lines[i] + '". Use city:cost.';
+              msg.style.color = "#c0392b";
+              return;
+            }
+            cities.push({ location: parts[0].trim(), cost: Number(parts[1].trim()) });
+          }
+
+          var btn = document.getElementById("save-shipping-btn");
+          btn.disabled = true;
+          msg.textContent = "Saving…";
+          msg.style.color = "#8b7d82";
+
+          fetch("/api/admin/update-shipping", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cities: cities }),
+          })
+            .then(function (res) { return res.json(); })
+            .then(function (result) {
+              btn.disabled = false;
+              if (result.success) {
+                msg.textContent = "Saved " + cities.length + " cities.";
+                msg.style.color = "#2e7d32";
+              } else {
+                msg.textContent = result.error || "Failed to save.";
+                msg.style.color = "#c0392b";
+              }
+            })
+            .catch(function () {
+              btn.disabled = false;
+              msg.textContent = "Network error.";
+              msg.style.color = "#c0392b";
+            });
+        });
 
         document.getElementById("date-range-select").addEventListener("change", function (e) {
           state.dateRange = e.target.value;
