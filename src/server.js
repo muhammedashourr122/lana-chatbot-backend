@@ -436,54 +436,79 @@ app.get("/admin/dashboard", (req, res) => {
 <head>
 <meta charset="utf-8">
 <title>Lana Beauty — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body { font-family: -apple-system, sans-serif; background: #f6ece7; color: #3a2e2c; margin: 0; padding: 32px 16px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  h2 { font-size: 15px; margin: 32px 0 12px; }
-  .sub { color: #8b7d82; font-size: 13px; margin-bottom: 24px; }
-  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-  .stat-card { background: #fff; border-radius: 12px; padding: 14px 18px; min-width: 140px; flex: 1; }
-  .stat-card .num { font-size: 22px; font-weight: 700; color: #6C4452; }
-  .stat-card .label { font-size: 12px; color: #8b7d82; margin-top: 2px; }
-  .status-pill { display: inline-block; background: #F1E4E8; color: #6C4452; border-radius: 999px; padding: 3px 10px; font-size: 11px; margin: 2px 4px 2px 0; }
-  .search-row { display: flex; gap: 8px; max-width: 420px; }
-  .search-row input { flex: 1; padding: 10px 14px; border: 1px solid #E5E5EF; border-radius: 10px; font-size: 14px; }
-  .search-row button { background: #6C4452; color: #fff; border: none; border-radius: 10px; padding: 10px 20px; font-size: 14px; cursor: pointer; }
-  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
-  th, td { padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #eee; }
-  th { background: #F1E4E8; color: #6C4452; font-weight: 600; }
-  tr.attention { background: #fdeaea; }
+  :root {
+    --ink: #3a2e2c; --muted: #8b7d82; --paper: #f6ece7; --card: #ffffff;
+    --accent: #6C4452; --accent-soft: #F1E4E8; --border: #ece1dc;
+    --ok-bg: #e6f4ea; --ok-text: #2e7d32; --danger-bg: #fbe4e4; --danger-text: #c0392b;
+    --radius: 14px; --shadow: 0 1px 3px rgba(58,46,44,0.06), 0 1px 2px rgba(58,46,44,0.04);
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", -apple-system, sans-serif; background: var(--paper); color: var(--ink); margin: 0; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 0 20px 60px; }
+  .topbar {
+    position: sticky; top: 0; z-index: 20; background: rgba(246,236,231,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border); padding: 18px 20px; margin-bottom: 24px;
+  }
+  .topbar-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 18px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 12px; margin: 2px 0 0; }
+  h2 { font-size: 14px; font-weight: 600; margin: 0 0 14px; color: var(--ink); }
+  .section-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px; }
+  .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 20px; min-width: 150px; flex: 1; border-left: 3px solid var(--accent); }
+  .stat-card .num { font-size: 24px; font-weight: 700; color: var(--accent); letter-spacing: -0.02em; }
+  .stat-card .label { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .status-pill { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 600; margin: 2px 4px 2px 0; }
+  .search-row { display: flex; gap: 8px; min-width: 260px; flex: 1; max-width: 420px; }
+  .search-row input { flex: 1; padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--card); }
+  .search-row input:focus { outline: none; border-color: var(--accent); }
+  .search-row button { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 9px 18px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .search-row button:hover { opacity: 0.88; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 11px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tr:last-child td { border-bottom: none; }
+  tr.attention { background: #fdf3f3; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
-  .badge.ok { background: #e6f4ea; color: #2e7d32; }
-  .badge.attn { background: #fbe4e4; color: #c0392b; }
-  .empty { text-align: center; padding: 24px; color: #8b7d82; font-size: 13px; }
-  .error { text-align: center; padding: 40px; color: #c0392b; }
-  .action-link { color: #6C4452; text-decoration: none; margin-right: 10px; font-size: 12px; }
+  .badge.ok { background: var(--ok-bg); color: var(--ok-text); }
+  .badge.attn { background: var(--danger-bg); color: var(--danger-text); }
+  .empty { text-align: center; padding: 28px; color: var(--muted); font-size: 13px; }
+  .error { text-align: center; padding: 40px; color: var(--danger-text); background: var(--card); border-radius: var(--radius); }
+  .action-link { color: var(--accent); text-decoration: none; margin-right: 12px; font-size: 12px; font-weight: 500; }
   .action-link:hover { text-decoration: underline; }
-  .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
-  .two-col > div { flex: 1; min-width: 240px; }
-  #export-btn { background: none; border: 1px solid #6C4452; color: #6C4452; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; margin-bottom: 8px; }
-  #refresh-note { font-size: 11px; color: #8b7d82; margin-top: 4px; }
-  .controls-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0 12px; font-size: 13px; }
-  .controls-row select { padding: 6px 10px; border: 1px solid #E5E5EF; border-radius: 8px; font-size: 13px; }
-  .controls-row label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+  .two-col { display: flex; gap: 20px; flex-wrap: wrap; }
+  .two-col > div { flex: 1; min-width: 260px; }
+  #export-btn { background: var(--card); border: 1px solid var(--accent); color: var(--accent); border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  #export-btn:hover { background: var(--accent-soft); }
+  #refresh-note { font-size: 11px; color: var(--muted); }
+  .controls-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; font-size: 13px; }
+  .controls-row select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; font-family: inherit; background: var(--card); }
+  .controls-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted); font-size: 12px; }
   th.sortable { cursor: pointer; user-select: none; }
-  th.sortable:hover { opacity: 0.8; }
-  th.sortable .arrow { opacity: 0.5; font-size: 10px; margin-left: 3px; }
-  tr.order-row { cursor: pointer; }
-  tr.detail-row td { background: #fbf6f2; padding: 14px; }
-  tr.detail-row .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 10px; }
-  tr.detail-row .detail-grid div span { display: block; color: #8b7d82; font-size: 11px; }
-  .status-select { padding: 5px 8px; border: 1px solid #E5E5EF; border-radius: 6px; font-size: 12px; margin-right: 6px; }
-  .status-btn { background: #6C4452; color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  th.sortable:hover { color: var(--accent); }
+  th.sortable .arrow { opacity: 0.6; font-size: 9px; margin-left: 3px; }
+  tr.order-row { cursor: pointer; transition: background 0.1s; }
+  tr.order-row:hover { background: #fbf6f3; }
+  tr.detail-row td { background: var(--paper); padding: 16px; }
+  tr.detail-row .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 12px; }
+  tr.detail-row .detail-grid div span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+  .status-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; margin-right: 8px; font-family: inherit; background: #fff; }
+  .status-btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .table-scroll { overflow-x: auto; }
+  .skeleton { background: linear-gradient(90deg, var(--accent-soft) 25%, #f7ecec 37%, var(--accent-soft) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; border-radius: var(--radius); height: 60px; }
+  @keyframes shimmer { 0% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
   @media (max-width: 700px) {
     table, thead, tbody, th, td, tr { display: block; }
     thead tr { position: absolute; top: -9999px; left: -9999px; }
-    table tr:not(.detail-row) { border: 1px solid #eee; border-radius: 10px; margin-bottom: 10px; padding: 6px 0; }
+    table tr:not(.detail-row) { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px; padding: 6px 0; }
     table td { border: none; position: relative; padding-left: 46%; }
     table td:before {
       position: absolute; left: 14px; width: 40%; white-space: nowrap;
-      content: attr(data-label); font-weight: 600; color: #6C4452; font-size: 11px;
+      content: attr(data-label); font-weight: 600; color: var(--accent); font-size: 11px;
     }
     tr.detail-row td { padding-left: 14px; }
     tr.detail-row td:before { content: none; }
@@ -491,16 +516,23 @@ app.get("/admin/dashboard", (req, res) => {
 </style>
 </head>
 <body>
-<h1>Lana Beauty Dashboard</h1>
-<p class="sub">All orders that have passed through our order-created, tracking, or Bosta pipelines. <span id="refresh-note"></span></p>
-
-<div class="search-row">
-  <input type="text" id="search-input" placeholder="Order number or phone number" />
-  <button id="search-btn">Search</button>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <h1>Lana Beauty Dashboard</h1>
+      <p class="sub">Orders tracked via order-created, lookup, and Bosta pipelines <span id="refresh-note"></span></p>
+    </div>
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Order number or phone number" />
+      <button id="search-btn">Search</button>
+    </div>
+  </div>
 </div>
+
+<div class="page">
 <div id="search-results"></div>
 
-<div id="root">Loading…</div>
+<div id="root"><div class="skeleton"></div></div>
 
 <script>
   var DASHBOARD_KEY = ${JSON.stringify(key)};
@@ -565,13 +597,13 @@ app.get("/admin/dashboard", (req, res) => {
           resultsEl.innerHTML = '<p class="empty">No matching orders.</p>';
           return;
         }
-        var html = '<table style="margin:12px 0;"><tr><th>Order #</th><th>Name</th><th>Phone</th><th>Status</th><th>Total</th><th>Actions</th></tr>';
+        var html = '<div class="section-card" style="margin-top:-8px;"><div class="table-scroll"><table><tr><th>Order #</th><th>Name</th><th>Phone</th><th>Status</th><th>Total</th><th>Actions</th></tr>';
         data.results.forEach(function (o) {
-          html += '<tr><td>#' + o.short_id + '</td><td>' + (o.full_name || '—') + '</td><td>' + (o.phone || '—') +
-            '</td><td>' + (o.status || '—') + '</td><td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') +
-            '</td><td>' + callLink(o.phone) + trackLink(o.order_id) + '</td></tr>';
+          html += '<tr><td data-label="Order #">#' + o.short_id + '</td><td data-label="Name">' + (o.full_name || '—') + '</td><td data-label="Phone">' + (o.phone || '—') +
+            '</td><td data-label="Status">' + (o.status || '—') + '</td><td data-label="Total">' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') +
+            '</td><td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + '</td></tr>';
         });
-        html += '</table>';
+        html += '</table></div></div>';
         resultsEl.innerHTML = html;
       })
       .catch(function () {
@@ -597,33 +629,33 @@ app.get("/admin/dashboard", (req, res) => {
           '<div class="stat-card"><div class="num">' + data.stats.avg_order_value.toLocaleString() + ' EGP</div><div class="label">Avg order value</div></div>' +
           '<div class="stat-card"><div class="num">' + data.stats.repeat_customers + '</div><div class="label">Repeat customers</div></div>' +
           '</div>';
-        var statusHtml = '<div style="margin-bottom:24px;">';
+        var statusHtml = '<div class="section-card" style="padding:14px 20px;">';
         Object.keys(data.stats.status_counts).forEach(function (s) {
           statusHtml += '<span class="status-pill">' + s + ': ' + data.stats.status_counts[s] + '</span>';
         });
         statusHtml += '</div>';
 
-        var topProductsHtml = '<div><h2>Top Products</h2>';
+        var topProductsHtml = '<div class="section-card"><h2>Top Products</h2>';
         if (data.top_products.length === 0) {
           topProductsHtml += '<div class="empty">No product data yet.</div>';
         } else {
-          topProductsHtml += '<table><tr><th>Product</th><th>Qty Sold</th></tr>';
+          topProductsHtml += '<div class="table-scroll"><table><tr><th>Product</th><th>Qty Sold</th></tr>';
           data.top_products.forEach(function (p) {
             topProductsHtml += '<tr><td data-label="Product">' + p.name + '</td><td data-label="Qty">' + p.qty + '</td></tr>';
           });
-          topProductsHtml += '</table>';
+          topProductsHtml += '</table></div>';
         }
         topProductsHtml += '</div>';
 
-        var govHtml = '<div><h2>Governorates</h2>';
+        var govHtml = '<div class="section-card"><h2>Governorates</h2>';
         if (data.governorates.length === 0) {
           govHtml += '<div class="empty">No location data yet.</div>';
         } else {
-          govHtml += '<table><tr><th>Governorate</th><th>Orders</th></tr>';
+          govHtml += '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th></tr>';
           data.governorates.forEach(function (g) {
             govHtml += '<tr><td data-label="Governorate">' + g.name + '</td><td data-label="Orders">' + g.count + '</td></tr>';
           });
-          govHtml += '</table>';
+          govHtml += '</table></div>';
         }
         govHtml += '</div>';
 
@@ -631,7 +663,7 @@ app.get("/admin/dashboard", (req, res) => {
           return withinDateRange(r.created_at) && (!state.attentionOnly || r.delivery.needs_attention);
         });
 
-        var deliveryHtml = '<h2>Bosta Delivery Tracking</h2>' +
+        var deliveryHtml = '<div class="section-card"><h2>Bosta Delivery Tracking</h2>' +
           '<div class="controls-row">' +
             '<label><input type="checkbox" id="attention-filter" ' + (state.attentionOnly ? 'checked' : '') + ' /> Needs attention only</label>' +
           '</div>';
@@ -641,7 +673,7 @@ app.get("/admin/dashboard", (req, res) => {
           var rows = deliveryOrders.slice().sort(function (a, b) {
             return (b.delivery.needs_attention ? 1 : 0) - (a.delivery.needs_attention ? 1 : 0);
           });
-          deliveryHtml += '<table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
+          deliveryHtml += '<div class="table-scroll"><table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
           rows.forEach(function (r) {
             deliveryHtml += '<tr class="' + (r.delivery.needs_attention ? 'attention' : '') + '">' +
               '<td data-label="Order #">' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
@@ -652,8 +684,9 @@ app.get("/admin/dashboard", (req, res) => {
               '<td data-label="Flag"><span class="badge ' + (r.delivery.needs_attention ? 'attn' : 'ok') + '">' + (r.delivery.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
               '</tr>';
           });
-          deliveryHtml += '</table>';
+          deliveryHtml += '</table></div>';
         }
+        deliveryHtml += '</div>';
 
         var filteredOrders = data.orders.filter(function (o) {
           return withinDateRange(o.created_at);
@@ -678,7 +711,7 @@ app.get("/admin/dashboard", (req, res) => {
           return '<span class="arrow">' + (state.sortDir === "asc" ? "▲" : "▼") + '</span>';
         }
 
-        var ordersHtml = '<h2>All Orders (' + filteredOrders.length + ')</h2>' +
+        var ordersHtml = '<div class="section-card"><h2>All Orders (' + filteredOrders.length + ')</h2>' +
           '<div class="controls-row">' +
             '<select id="date-range-select">' +
               '<option value="all"' + (state.dateRange === "all" ? " selected" : "") + '>All time</option>' +
@@ -691,7 +724,7 @@ app.get("/admin/dashboard", (req, res) => {
         if (filteredOrders.length === 0) {
           ordersHtml += '<div class="empty">No orders in this range.</div>';
         } else {
-          ordersHtml += '<table><tr>' +
+          ordersHtml += '<div class="table-scroll"><table><tr>' +
             '<th class="sortable" data-sort="short_id">Order #' + sortArrow("short_id") + '</th>' +
             '<th class="sortable" data-sort="full_name">Name' + sortArrow("full_name") + '</th>' +
             '<th class="sortable" data-sort="status">Status' + sortArrow("status") + '</th>' +
@@ -737,8 +770,9 @@ app.get("/admin/dashboard", (req, res) => {
               '</td></tr>';
             }
           });
-          ordersHtml += '</table>';
+          ordersHtml += '</table></div>';
         }
+        ordersHtml += '</div>';
 
         root.innerHTML = statsHtml + statusHtml +
           '<div class="two-col">' + topProductsHtml + govHtml + '</div>' +
@@ -838,6 +872,7 @@ app.get("/admin/dashboard", (req, res) => {
       "· Last refreshed " + new Date().toLocaleTimeString();
   }, 30000);
 </script>
+</div><!-- /.page -->
 </body>
 </html>`);
 });
