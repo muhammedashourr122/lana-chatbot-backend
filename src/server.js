@@ -939,7 +939,7 @@ app.get("/admin/dashboard", (req, res) => {
         var shippingHtml = '<div class="section-card">' +
           '<h2>Shipping Costs</h2>' +
           '<p class="empty" style="margin:0 0 12px;">One city per line, format <code>city:cost</code> (e.g. <code>cairo:30</code>). Saving replaces the entire shipping list on Easy Orders.</p>' +
-          '<textarea id="shipping-textarea" rows="6" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:10px;border-radius:8px;border:1px solid #e2d8dc;" placeholder="cairo:30\nalexander:40\ngiza:35"></textarea>' +
+          '<textarea id="shipping-textarea" rows="6" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:10px;border-radius:8px;border:1px solid #e2d8dc;" placeholder="cairo:30\\nalexander:40\\ngiza:35"></textarea>' +
           '<div style="margin-top:10px;display:flex;align-items:center;gap:10px;">' +
           '<button id="save-shipping-btn" class="btn">Save shipping costs</button>' +
           '<span id="shipping-msg"></span>' +
@@ -1109,7 +1109,7 @@ app.get("/admin/dashboard", (req, res) => {
         document.getElementById("save-shipping-btn").addEventListener("click", function () {
           var textarea = document.getElementById("shipping-textarea");
           var msg = document.getElementById("shipping-msg");
-          var lines = textarea.value.split("\n").map(function (l) { return l.trim(); }).filter(Boolean);
+          var lines = textarea.value.split("\\n").map(function (l) { return l.trim(); }).filter(Boolean);
 
           if (lines.length === 0) {
             msg.textContent = "Add at least one city:cost line.";
