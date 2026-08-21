@@ -33,6 +33,7 @@ const PORT = process.env.PORT || 3000;
 const ALLOWED_ORIGINS = [
   "https://lana-beauty.com",
   "https://www.lana-beauty.com",
+  "https://lana-chatbot-backend.onrender.com",
 ];
 
 app.use(
