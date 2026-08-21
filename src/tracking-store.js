@@ -58,6 +58,7 @@ async function getKnownOrderIds() {
 async function indexPhoneToOrder(phone, orderId) {
   if (!phone || !orderId) return;
   await redis.sadd(phoneKey(phone), orderId);
+  await redis.sadd(KNOWN_ORDERS_KEY, orderId);
 }
 
 async function getOrderIdsForPhone(phone) {
