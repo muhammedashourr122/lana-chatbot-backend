@@ -11,6 +11,7 @@ const {
   getCategories,
   getOrder,
   getOrderByShortId,
+  updateOrderStatus,
 } = require("./easyorders");
 const {
   getTrackingEvents,
@@ -286,6 +287,9 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
           full_name: order ? order.full_name : null,
           phone: order ? order.phone : null,
           government: order ? order.government : null,
+          address: order ? order.address : null,
+          payment_method: order ? order.payment_method : null,
+          shipping_cost: order ? order.shipping_cost : null,
           created_at: order ? order.created_at : null,
           orders_count: order?.metadata?.tracking?.orders_count || 1,
           cart_items: order ? order.cart_items : [],
@@ -393,6 +397,33 @@ app.get("/api/admin/search", async (req, res) => {
   } catch (error) {
     console.error("Admin search error:", error.message);
     res.status(500).json({ success: false, error: "Search failed" });
+  }
+});
+
+const VALID_ORDER_STATUSES = [
+  "pending", "confirmed", "pending_payment", "paid", "paid_failed",
+  "processing", "waiting_for_pickup", "in_delivery", "delivered",
+  "canceled", "returning_from_delivery", "request_refund",
+  "refund_in_progress", "refunded",
+];
+
+app.post("/api/admin/update-status", async (req, res) => {
+  try {
+    if (!checkAdminKey(req, res)) return;
+
+    const { order_id, status } = req.body || {};
+    if (!order_id || !status) {
+      return res.status(400).json({ success: false, error: "order_id and status are required" });
+    }
+    if (!VALID_ORDER_STATUSES.includes(status)) {
+      return res.status(400).json({ success: false, error: "Invalid status" });
+    }
+
+    await updateOrderStatus(order_id, status);
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Admin status update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({ success: false, error: "Failed to update status" });
   }
 });
 
