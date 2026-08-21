@@ -284,7 +284,11 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
           status,
           total_cost: order ? order.total_cost : null,
           full_name: order ? order.full_name : null,
+          phone: order ? order.phone : null,
+          government: order ? order.government : null,
           created_at: order ? order.created_at : null,
+          orders_count: order?.metadata?.tracking?.orders_count || 1,
+          cart_items: order ? order.cart_items : [],
           delivery: deliveryRow,
         };
       })
@@ -294,19 +298,44 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
     const deliveryRows = validRows.filter((r) => r.delivery);
 
     const statusCounts = {};
+    const govCounts = {};
+    const productCounts = {};
+    const repeatPhones = new Set();
     let revenue = 0;
+
     validRows.forEach((r) => {
       if (r.status) statusCounts[r.status] = (statusCounts[r.status] || 0) + 1;
       if (typeof r.total_cost === "number") revenue += r.total_cost;
+      if (r.government) govCounts[r.government] = (govCounts[r.government] || 0) + 1;
+      if (r.orders_count > 1 && r.phone) repeatPhones.add(r.phone);
+
+      (r.cart_items || []).forEach((item) => {
+        const name = item?.product?.name;
+        if (!name) return;
+        productCounts[name] = (productCounts[name] || 0) + (item.quantity || 1);
+      });
     });
+
+    const topProducts = Object.entries(productCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, qty]) => ({ name, qty }));
+
+    const governorates = Object.entries(govCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
 
     res.json({
       success: true,
       stats: {
         total_orders: validRows.length,
         revenue,
+        avg_order_value: validRows.length ? Math.round(revenue / validRows.length) : 0,
+        repeat_customers: repeatPhones.size,
         status_counts: statusCounts,
       },
+      top_products: topProducts,
+      governorates,
       total: deliveryRows.length,
       needs_attention: deliveryRows.filter((r) => r.delivery.needs_attention),
       all: deliveryRows,
@@ -397,11 +426,17 @@ app.get("/admin/dashboard", (req, res) => {
   .badge.attn { background: #fbe4e4; color: #c0392b; }
   .empty { text-align: center; padding: 24px; color: #8b7d82; font-size: 13px; }
   .error { text-align: center; padding: 40px; color: #c0392b; }
+  .action-link { color: #6C4452; text-decoration: none; margin-right: 10px; font-size: 12px; }
+  .action-link:hover { text-decoration: underline; }
+  .two-col { display: flex; gap: 16px; flex-wrap: wrap; }
+  .two-col > div { flex: 1; min-width: 240px; }
+  #export-btn { background: none; border: 1px solid #6C4452; color: #6C4452; border-radius: 8px; padding: 6px 14px; font-size: 12px; cursor: pointer; margin-bottom: 8px; }
+  #refresh-note { font-size: 11px; color: #8b7d82; margin-top: 4px; }
 </style>
 </head>
 <body>
 <h1>Lana Beauty Dashboard</h1>
-<p class="sub">All orders that have passed through our order-created, tracking, or Bosta pipelines.</p>
+<p class="sub">All orders that have passed through our order-created, tracking, or Bosta pipelines. <span id="refresh-note"></span></p>
 
 <div class="search-row">
   <input type="text" id="search-input" placeholder="Order number or phone number" />
@@ -413,6 +448,38 @@ app.get("/admin/dashboard", (req, res) => {
 
 <script>
   var DASHBOARD_KEY = ${JSON.stringify(key)};
+  var lastData = null;
+
+  function callLink(phone) {
+    if (!phone) return '—';
+    return '<a class="action-link" href="tel:' + phone + '">Call</a>' +
+      '<a class="action-link" href="https://wa.me/' + phone.replace(/\\D/g, '') + '" target="_blank" rel="noreferrer">WhatsApp</a>';
+  }
+
+  function trackLink(orderId) {
+    return '<a class="action-link" href="https://www.lana-beauty.com/track/' + orderId + '" target="_blank" rel="noreferrer">Track page</a>';
+  }
+
+  function exportCsv() {
+    if (!lastData) return;
+    var rows = [["Order #", "Name", "Phone", "Status", "Total", "Governorate", "Created"]];
+    lastData.orders.forEach(function (o) {
+      rows.push([
+        o.short_id || "", o.full_name || "", o.phone || "", o.status || "",
+        o.total_cost || "", o.government || "", o.created_at || "",
+      ]);
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(",");
+    }).join("\\n");
+    var blob = new Blob([csv], { type: "text/csv" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "lana-orders.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   document.getElementById("search-btn").addEventListener("click", function () {
     var q = document.getElementById("search-input").value.trim();
@@ -428,10 +495,11 @@ app.get("/admin/dashboard", (req, res) => {
           resultsEl.innerHTML = '<p class="empty">No matching orders.</p>';
           return;
         }
-        var html = '<table style="margin:12px 0;"><tr><th>Order #</th><th>Name</th><th>Phone</th><th>Status</th><th>Total</th></tr>';
+        var html = '<table style="margin:12px 0;"><tr><th>Order #</th><th>Name</th><th>Phone</th><th>Status</th><th>Total</th><th>Actions</th></tr>';
         data.results.forEach(function (o) {
           html += '<tr><td>#' + o.short_id + '</td><td>' + (o.full_name || '—') + '</td><td>' + (o.phone || '—') +
-            '</td><td>' + (o.status || '—') + '</td><td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td></tr>';
+            '</td><td>' + (o.status || '—') + '</td><td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') +
+            '</td><td>' + callLink(o.phone) + trackLink(o.order_id) + '</td></tr>';
         });
         html += '</table>';
         resultsEl.innerHTML = html;
@@ -441,72 +509,116 @@ app.get("/admin/dashboard", (req, res) => {
       });
   });
 
-  fetch("/api/admin/delivery-dashboard?key=" + encodeURIComponent(DASHBOARD_KEY))
-    .then(function (res) { return res.json(); })
-    .then(function (data) {
-      var root = document.getElementById("root");
-      if (!data.success) {
-        root.innerHTML = '<div class="error">' + (data.error || "Unauthorized") + '</div>';
-        return;
-      }
+  function loadDashboard() {
+    fetch("/api/admin/delivery-dashboard?key=" + encodeURIComponent(DASHBOARD_KEY))
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        var root = document.getElementById("root");
+        if (!data.success) {
+          root.innerHTML = '<div class="error">' + (data.error || "Unauthorized") + '</div>';
+          return;
+        }
+        lastData = data;
 
-      var statsHtml = '<div class="stats-row">' +
-        '<div class="stat-card"><div class="num">' + data.stats.total_orders + '</div><div class="label">Total tracked orders</div></div>' +
-        '<div class="stat-card"><div class="num">' + data.stats.revenue.toLocaleString() + ' EGP</div><div class="label">Total revenue (tracked)</div></div>' +
-        '</div>';
-      var statusHtml = '<div style="margin-bottom:24px;">';
-      Object.keys(data.stats.status_counts).forEach(function (s) {
-        statusHtml += '<span class="status-pill">' + s + ': ' + data.stats.status_counts[s] + '</span>';
+        var statsHtml = '<div class="stats-row">' +
+          '<div class="stat-card"><div class="num">' + data.stats.total_orders + '</div><div class="label">Total tracked orders</div></div>' +
+          '<div class="stat-card"><div class="num">' + data.stats.revenue.toLocaleString() + ' EGP</div><div class="label">Total revenue</div></div>' +
+          '<div class="stat-card"><div class="num">' + data.stats.avg_order_value.toLocaleString() + ' EGP</div><div class="label">Avg order value</div></div>' +
+          '<div class="stat-card"><div class="num">' + data.stats.repeat_customers + '</div><div class="label">Repeat customers</div></div>' +
+          '</div>';
+        var statusHtml = '<div style="margin-bottom:24px;">';
+        Object.keys(data.stats.status_counts).forEach(function (s) {
+          statusHtml += '<span class="status-pill">' + s + ': ' + data.stats.status_counts[s] + '</span>';
+        });
+        statusHtml += '</div>';
+
+        var topProductsHtml = '<div><h2>Top Products</h2>';
+        if (data.top_products.length === 0) {
+          topProductsHtml += '<div class="empty">No product data yet.</div>';
+        } else {
+          topProductsHtml += '<table><tr><th>Product</th><th>Qty Sold</th></tr>';
+          data.top_products.forEach(function (p) {
+            topProductsHtml += '<tr><td>' + p.name + '</td><td>' + p.qty + '</td></tr>';
+          });
+          topProductsHtml += '</table>';
+        }
+        topProductsHtml += '</div>';
+
+        var govHtml = '<div><h2>Governorates</h2>';
+        if (data.governorates.length === 0) {
+          govHtml += '<div class="empty">No location data yet.</div>';
+        } else {
+          govHtml += '<table><tr><th>Governorate</th><th>Orders</th></tr>';
+          data.governorates.forEach(function (g) {
+            govHtml += '<tr><td>' + g.name + '</td><td>' + g.count + '</td></tr>';
+          });
+          govHtml += '</table>';
+        }
+        govHtml += '</div>';
+
+        var deliveryHtml = '<h2>Bosta Delivery Tracking</h2>';
+        if (data.all.length === 0) {
+          deliveryHtml += '<div class="empty">No orders with Bosta tracking events yet.</div>';
+        } else {
+          var rows = data.all.slice().sort(function (a, b) {
+            return (b.delivery.needs_attention ? 1 : 0) - (a.delivery.needs_attention ? 1 : 0);
+          });
+          deliveryHtml += '<table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
+          rows.forEach(function (r) {
+            deliveryHtml += '<tr class="' + (r.delivery.needs_attention ? 'attention' : '') + '">' +
+              '<td>' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
+              '<td>' + (r.status || '—') + '</td>' +
+              '<td>' + (r.delivery.latest_state || '—') + '</td>' +
+              '<td>' + (r.delivery.tracking_number || '—') + '</td>' +
+              '<td>' + r.delivery.hours_since_update + 'h</td>' +
+              '<td><span class="badge ' + (r.delivery.needs_attention ? 'attn' : 'ok') + '">' + (r.delivery.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
+              '</tr>';
+          });
+          deliveryHtml += '</table>';
+        }
+
+        var ordersHtml = '<h2>All Orders</h2><button id="export-btn">Export CSV</button>';
+        if (data.orders.length === 0) {
+          ordersHtml += '<div class="empty">No orders tracked yet.</div>';
+        } else {
+          var sortedOrders = data.orders.slice().sort(function (a, b) {
+            return new Date(b.created_at) - new Date(a.created_at);
+          });
+          ordersHtml += '<table><tr><th>Order #</th><th>Name</th><th>Status</th><th>Total</th><th>Created</th><th>Actions</th></tr>';
+          sortedOrders.forEach(function (o) {
+            var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString() : '—';
+            ordersHtml += '<tr>' +
+              '<td>' + (o.short_id != null ? '#' + o.short_id : o.order_id.slice(0, 8)) + '</td>' +
+              '<td>' + (o.full_name || '—') + '</td>' +
+              '<td>' + (o.status || '—') + '</td>' +
+              '<td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td>' +
+              '<td>' + dateStr + '</td>' +
+              '<td>' + callLink(o.phone) + trackLink(o.order_id) + '</td>' +
+              '</tr>';
+          });
+          ordersHtml += '</table>';
+        }
+
+        root.innerHTML = statsHtml + statusHtml +
+          '<div class="two-col">' + topProductsHtml + govHtml + '</div>' +
+          deliveryHtml + ordersHtml;
+
+        document.getElementById("export-btn").addEventListener("click", exportCsv);
+      })
+      .catch(function () {
+        document.getElementById("root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
       });
-      statusHtml += '</div>';
+  }
 
-      var deliveryHtml = '<h2>Bosta Delivery Tracking</h2>';
-      if (data.all.length === 0) {
-        deliveryHtml += '<div class="empty">No orders with Bosta tracking events yet.</div>';
-      } else {
-        var rows = data.all.slice().sort(function (a, b) {
-          return (b.delivery.needs_attention ? 1 : 0) - (a.delivery.needs_attention ? 1 : 0);
-        });
-        deliveryHtml += '<table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
-        rows.forEach(function (r) {
-          deliveryHtml += '<tr class="' + (r.delivery.needs_attention ? 'attention' : '') + '">' +
-            '<td>' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
-            '<td>' + (r.status || '—') + '</td>' +
-            '<td>' + (r.delivery.latest_state || '—') + '</td>' +
-            '<td>' + (r.delivery.tracking_number || '—') + '</td>' +
-            '<td>' + r.delivery.hours_since_update + 'h</td>' +
-            '<td><span class="badge ' + (r.delivery.needs_attention ? 'attn' : 'ok') + '">' + (r.delivery.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
-            '</tr>';
-        });
-        deliveryHtml += '</table>';
-      }
+  loadDashboard();
 
-      var ordersHtml = '<h2>All Orders</h2>';
-      if (data.orders.length === 0) {
-        ordersHtml += '<div class="empty">No orders tracked yet.</div>';
-      } else {
-        var sortedOrders = data.orders.slice().sort(function (a, b) {
-          return new Date(b.created_at) - new Date(a.created_at);
-        });
-        ordersHtml += '<table><tr><th>Order #</th><th>Name</th><th>Status</th><th>Total</th><th>Created</th></tr>';
-        sortedOrders.forEach(function (o) {
-          var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString() : '—';
-          ordersHtml += '<tr>' +
-            '<td>' + (o.short_id != null ? '#' + o.short_id : o.order_id.slice(0, 8)) + '</td>' +
-            '<td>' + (o.full_name || '—') + '</td>' +
-            '<td>' + (o.status || '—') + '</td>' +
-            '<td>' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td>' +
-            '<td>' + dateStr + '</td>' +
-            '</tr>';
-        });
-        ordersHtml += '</table>';
-      }
-
-      root.innerHTML = statsHtml + statusHtml + deliveryHtml + ordersHtml;
-    })
-    .catch(function () {
-      document.getElementById("root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
-    });
+  var refreshCount = 0;
+  setInterval(function () {
+    loadDashboard();
+    refreshCount++;
+    document.getElementById("refresh-note").textContent =
+      "· Last refreshed " + new Date().toLocaleTimeString();
+  }, 30000);
 </script>
 </body>
 </html>`);
