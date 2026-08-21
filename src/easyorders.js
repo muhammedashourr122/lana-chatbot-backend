@@ -52,38 +52,6 @@ async function easyOrdersPost(path, body = {}) {
   return response.data;
 }
 
-async function easyOrdersRawPatch(path, body = {}) {
-  const response = await axios.patch(`${BASE_URL}${path}`, body, {
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "Api-Key": getApiKey(),
-    },
-    timeout: 15000,
-  });
-
-  return response.data;
-}
-
-// cities: array of { location, cost } — sent to Easy Orders as a single
-// comma-separated "location:cost" string, which overwrites the store's
-// entire shipping list (there's no documented endpoint to add/patch a
-// single city, only to replace the whole set).
-async function updateShipping(cities) {
-  if (!Array.isArray(cities) || cities.length === 0) {
-    throw new Error("cities must be a non-empty array of { location, cost }");
-  }
-
-  const citiesString = cities
-    .map(({ location, cost }) => `${location}:${cost}`)
-    .join(",");
-
-  return easyOrdersRawPatch("/shipping", {
-    is_active: true,
-    cities: citiesString,
-  });
-}
-
 async function getProducts(params = {}) {
   return easyOrdersGet("/products/", params);
 }
@@ -150,5 +118,4 @@ module.exports = {
   getOrderByShortId,
   updateOrderStatus,
   addOrderNote,
-  updateShipping,
 };

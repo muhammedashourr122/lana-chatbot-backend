@@ -1,6 +1,7 @@
 const express = require("express");
 const { updateOrderStatus, addOrderNote, getOrder } = require("../easyorders");
 const { addTrackingEvent, indexPhoneToOrder } = require("../tracking-store");
+const adminCache = require("../lib/admin-cache");
 
 const router = express.Router();
 
@@ -132,6 +133,7 @@ router.post("/bosta", async (req, res) => {
       stateName,
       trackingNumber: trackingNumber || null,
     });
+    adminCache.invalidate("admin-data");
   } catch (error) {
     console.error("Failed to store tracking event in Upstash:", error.message);
     // Non-fatal — still proceed with the note/status update below.
@@ -181,3 +183,5 @@ router.post("/bosta", async (req, res) => {
 });
 
 module.exports = router;
+module.exports.BOSTA_STATE_TO_EASYORDERS_STATUS = BOSTA_STATE_TO_EASYORDERS_STATUS;
+module.exports.BOSTA_STATE_NAMES = BOSTA_STATE_NAMES;

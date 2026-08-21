@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lana Beauty — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/dashboard.css">
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <h1>Lana Beauty Dashboard</h1>
+      <p class="sub">Business health, delivery performance, and orders <span id="refresh-note"></span></p>
+    </div>
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Order number or phone number" />
+      <button id="search-btn">Search</button>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+  <div id="search-results"></div>
+  <div id="customer-panel" style="display:none;margin-bottom:20px;"></div>
+
+  <div id="overview-root"><div class="skeleton"></div></div>
+  <div id="attention-root"></div>
+  <div id="governorates-root"></div>
+  <div id="top-products-root"></div>
+  <div id="orders-root"></div>
+</div>
+
+<script type="module" src="/admin/dashboard.js"></script>
+</body>
+</html>
