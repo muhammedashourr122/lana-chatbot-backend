@@ -330,6 +330,38 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
 
+    // Revenue by day, last 30 days, for the trend chart.
+    const revenueByDay = {};
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    validRows.forEach((r) => {
+      if (!r.created_at || typeof r.total_cost !== "number") return;
+      const t = new Date(r.created_at).getTime();
+      if (t < thirtyDaysAgo) return;
+      const day = r.created_at.slice(0, 10); // YYYY-MM-DD
+      revenueByDay[day] = (revenueByDay[day] || 0) + r.total_cost;
+    });
+    const revenueTrend = Object.entries(revenueByDay)
+      .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([day, total]) => ({ day, total }));
+
+    // Orders stuck in pending/pending_payment for 24h+ — never even
+    // dispatched, separate from Bosta-tracked delivery delays.
+    const PENDING_STALE_HOURS = 24;
+    const stuckPayments = validRows.filter((r) => {
+      if (!["pending", "pending_payment"].includes(r.status)) return false;
+      if (!r.created_at) return false;
+      const hours = (now - new Date(r.created_at).getTime()) / (1000 * 60 * 60);
+      return hours > PENDING_STALE_HOURS;
+    }).map((r) => ({
+      order_id: r.order_id,
+      short_id: r.short_id,
+      full_name: r.full_name,
+      phone: r.phone,
+      status: r.status,
+      total_cost: r.total_cost,
+      hours_pending: Math.round((now - new Date(r.created_at).getTime()) / (1000 * 60 * 60)),
+    }));
+
     res.json({
       success: true,
       stats: {
@@ -341,6 +373,8 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
       },
       top_products: topProducts,
       governorates,
+      revenue_trend: revenueTrend,
+      stuck_payments: stuckPayments,
       total: deliveryRows.length,
       needs_attention: deliveryRows.filter((r) => r.delivery.needs_attention),
       all: deliveryRows,
@@ -401,6 +435,52 @@ app.get("/api/admin/search", async (req, res) => {
   }
 });
 
+// All orders + lifetime spend for one phone number — same order index
+// used for the customer-facing "all my orders" feature, just richer.
+app.get("/api/admin/customer", async (req, res) => {
+  try {
+    if (!checkAdminKey(req, res)) return;
+
+    const phone = String(req.query.phone || "").trim();
+    if (!phone) return res.status(400).json({ success: false, error: "phone is required" });
+
+    const orderIds = await getOrderIdsForPhone(phone);
+    const orders = (
+      await Promise.all(
+        orderIds.map(async (id) => {
+          try {
+            return await getOrder(id);
+          } catch (e) {
+            return null;
+          }
+        })
+      )
+    ).filter(Boolean);
+
+    const lifetimeValue = orders.reduce((sum, o) => sum + (o.total_cost || 0), 0);
+
+    res.json({
+      success: true,
+      full_name: orders[0] ? orders[0].full_name : null,
+      phone,
+      order_count: orders.length,
+      lifetime_value: lifetimeValue,
+      orders: orders
+        .map((o) => ({
+          order_id: o.id,
+          short_id: o.short_id,
+          status: o.status,
+          total_cost: o.total_cost,
+          created_at: o.created_at,
+        }))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
+    });
+  } catch (error) {
+    console.error("Customer lookup error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load customer" });
+  }
+});
+
 const VALID_ORDER_STATUSES = [
   "pending", "confirmed", "pending_payment", "paid", "paid_failed",
   "processing", "waiting_for_pickup", "in_delivery", "delivered",
@@ -426,6 +506,65 @@ app.post("/api/admin/update-status", async (req, res) => {
     console.error("Admin status update error:", error.response?.data || error.message);
     res.status(error.response?.status || 500).json({ success: false, error: "Failed to update status" });
   }
+});
+
+app.get("/admin/packing-slip/:orderId", async (req, res) => {
+  const key = String(req.query.key || "");
+  if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
+    return res.status(401).send("Unauthorized");
+  }
+
+  let order;
+  try {
+    order = await getOrder(req.params.orderId);
+  } catch (error) {
+    return res.status(404).send("Order not found");
+  }
+
+  const itemsRows = (order.cart_items || [])
+    .map((item) => {
+      const name = item.product ? item.product.name : "Item";
+      return '<tr><td>' + name + '</td><td>' + item.quantity + '</td><td>' + item.price + ' EGP</td></tr>';
+    })
+    .join("");
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Packing Slip — Order #${order.short_id}</title>
+<style>
+  body { font-family: -apple-system, sans-serif; color: #222; margin: 0; padding: 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+  .row { display: flex; gap: 40px; margin-bottom: 24px; }
+  .row div { flex: 1; }
+  .row span { display: block; color: #999; font-size: 11px; text-transform: uppercase; margin-bottom: 3px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #ddd; font-size: 13px; }
+  th { color: #999; font-size: 11px; text-transform: uppercase; }
+  .total { text-align: right; font-size: 15px; font-weight: 700; margin-top: 14px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<h1>Lana Beauty — Packing Slip</h1>
+<p class="sub">Order #${order.short_id} — ${new Date(order.created_at).toLocaleDateString()}</p>
+
+<div class="row">
+  <div><span>Ship To</span>${order.full_name || "—"}<br>${order.address || "—"}<br>${order.government || "—"}</div>
+  <div><span>Phone</span>${order.phone || "—"}<br><span style="margin-top:8px;">Payment</span>${order.payment_method || "—"}</div>
+</div>
+
+<table>
+<tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+${itemsRows}
+</table>
+<div class="total">Total: ${order.total_cost} EGP</div>
+
+<script>window.onload = function() { window.print(); };</script>
+</body>
+</html>`);
 });
 
 app.get("/admin/dashboard", (req, res) => {
@@ -531,6 +670,7 @@ app.get("/admin/dashboard", (req, res) => {
 
 <div class="page">
 <div id="search-results"></div>
+<div id="customer-panel" style="display:none;margin-bottom:20px;"></div>
 
 <div id="root"><div class="skeleton"></div></div>
 
@@ -561,6 +701,63 @@ app.get("/admin/dashboard", (req, res) => {
   function trackLink(orderId) {
     return '<a class="action-link" href="https://www.lana-beauty.com/track/' + orderId + '" target="_blank" rel="noreferrer">Track page</a>';
   }
+
+  function printLink(orderId) {
+    return '<a class="action-link" href="/admin/packing-slip/' + orderId + '?key=' + encodeURIComponent(DASHBOARD_KEY) + '" target="_blank" rel="noreferrer">Print slip</a>';
+  }
+
+  function customerLink(phone) {
+    if (!phone) return '';
+    return '<a class="action-link customer-link" href="#" data-phone="' + phone + '">Customer</a>';
+  }
+
+  function openCustomerPanel(phone) {
+    var panel = document.getElementById("customer-panel");
+    panel.style.display = "block";
+    panel.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+    panel.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    fetch("/api/admin/customer?key=" + encodeURIComponent(DASHBOARD_KEY) + "&phone=" + encodeURIComponent(phone))
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (!data.success) {
+          panel.innerHTML = '<div class="section-card"><p class="empty">Could not load customer.</p></div>';
+          return;
+        }
+        var html = '<div class="section-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+            '<h2 style="margin:0;">' + (data.full_name || phone) + '</h2>' +
+            '<button id="customer-close" style="background:none;border:none;color:#8b7d82;cursor:pointer;font-size:13px;">Close ✕</button>' +
+          '</div>' +
+          '<div class="stats-row" style="margin-bottom:16px;">' +
+            '<div class="stat-card"><div class="num">' + data.order_count + '</div><div class="label">Orders</div></div>' +
+            '<div class="stat-card"><div class="num">' + data.lifetime_value.toLocaleString() + ' EGP</div><div class="label">Lifetime value</div></div>' +
+          '</div>' +
+          '<div class="table-scroll"><table><tr><th>Order #</th><th>Status</th><th>Total</th><th>Date</th></tr>';
+        data.orders.forEach(function (o) {
+          html += '<tr><td data-label="Order #">#' + o.short_id + '</td><td data-label="Status">' + (o.status || '—') +
+            '</td><td data-label="Total">' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') +
+            '</td><td data-label="Date">' + (o.created_at ? new Date(o.created_at).toLocaleDateString() : '—') + '</td></tr>';
+        });
+        html += '</table></div></div>';
+        panel.innerHTML = html;
+        document.getElementById("customer-close").addEventListener("click", function () {
+          panel.style.display = "none";
+          panel.innerHTML = "";
+        });
+      })
+      .catch(function () {
+        panel.innerHTML = '<div class="section-card"><p class="empty">Failed to load customer.</p></div>';
+      });
+  }
+
+  document.addEventListener("click", function (e) {
+    var link = e.target.closest(".customer-link");
+    if (!link) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openCustomerPanel(link.getAttribute("data-phone"));
+  });
 
   function exportCsv() {
     if (!lastData) return;
@@ -601,7 +798,7 @@ app.get("/admin/dashboard", (req, res) => {
         data.results.forEach(function (o) {
           html += '<tr><td data-label="Order #">#' + o.short_id + '</td><td data-label="Name">' + (o.full_name || '—') + '</td><td data-label="Phone">' + (o.phone || '—') +
             '</td><td data-label="Status">' + (o.status || '—') + '</td><td data-label="Total">' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') +
-            '</td><td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + '</td></tr>';
+            '</td><td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + printLink(o.order_id) + customerLink(o.phone) + '</td></tr>';
         });
         html += '</table></div></div>';
         resultsEl.innerHTML = html;
@@ -634,6 +831,40 @@ app.get("/admin/dashboard", (req, res) => {
           statusHtml += '<span class="status-pill">' + s + ': ' + data.stats.status_counts[s] + '</span>';
         });
         statusHtml += '</div>';
+
+        var revenueChartHtml = '<div class="section-card"><h2>Revenue — Last 30 Days</h2>';
+        if (!data.revenue_trend || data.revenue_trend.length === 0) {
+          revenueChartHtml += '<div class="empty">No revenue data yet.</div>';
+        } else {
+          var maxRevenue = Math.max.apply(null, data.revenue_trend.map(function (d) { return d.total; }));
+          revenueChartHtml += '<div style="display:flex;align-items:flex-end;gap:3px;height:120px;overflow-x:auto;padding-top:8px;">';
+          data.revenue_trend.forEach(function (d) {
+            var pct = maxRevenue ? Math.max((d.total / maxRevenue) * 100, 3) : 3;
+            var dayLabel = d.day.slice(5); // MM-DD
+            revenueChartHtml += '<div title="' + dayLabel + ': ' + d.total.toLocaleString() + ' EGP" ' +
+              'style="flex:0 0 18px;height:' + pct + '%;background:#6C4452;border-radius:3px 3px 0 0;"></div>';
+          });
+          revenueChartHtml += '</div>';
+        }
+        revenueChartHtml += '</div>';
+
+        var stuckPaymentsHtml = '';
+        if (data.stuck_payments && data.stuck_payments.length > 0) {
+          stuckPaymentsHtml = '<div class="section-card"><h2>Stuck Payments (' + data.stuck_payments.length + ')</h2>' +
+            '<p class="sub" style="margin-bottom:12px;">Orders pending 24h+ that were never dispatched.</p>' +
+            '<div class="table-scroll"><table><tr><th>Order #</th><th>Name</th><th>Status</th><th>Total</th><th>Hours Pending</th><th>Actions</th></tr>';
+          data.stuck_payments.forEach(function (p) {
+            stuckPaymentsHtml += '<tr class="attention">' +
+              '<td data-label="Order #">#' + p.short_id + '</td>' +
+              '<td data-label="Name">' + (p.full_name || '—') + '</td>' +
+              '<td data-label="Status">' + p.status + '</td>' +
+              '<td data-label="Total">' + (p.total_cost != null ? p.total_cost + ' EGP' : '—') + '</td>' +
+              '<td data-label="Pending">' + p.hours_pending + 'h</td>' +
+              '<td data-label="Actions">' + callLink(p.phone) + '</td>' +
+              '</tr>';
+          });
+          stuckPaymentsHtml += '</table></div></div>';
+        }
 
         var topProductsHtml = '<div class="section-card"><h2>Top Products</h2>';
         if (data.top_products.length === 0) {
@@ -740,7 +971,7 @@ app.get("/admin/dashboard", (req, res) => {
               '<td data-label="Status">' + (o.status || '—') + '</td>' +
               '<td data-label="Total">' + (o.total_cost != null ? o.total_cost + ' EGP' : '—') + '</td>' +
               '<td data-label="Created">' + dateStr + '</td>' +
-              '<td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + '</td>' +
+              '<td data-label="Actions">' + callLink(o.phone) + trackLink(o.order_id) + printLink(o.order_id) + customerLink(o.phone) + '</td>' +
               '</tr>';
 
             if (isExpanded) {
@@ -774,7 +1005,7 @@ app.get("/admin/dashboard", (req, res) => {
         }
         ordersHtml += '</div>';
 
-        root.innerHTML = statsHtml + statusHtml +
+        root.innerHTML = statsHtml + statusHtml + revenueChartHtml + stuckPaymentsHtml +
           '<div class="two-col">' + topProductsHtml + govHtml + '</div>' +
           deliveryHtml + ordersHtml;
 
