@@ -191,17 +191,17 @@ function renderGovernorates(governorates) {
   function draw() {
     let html = '<div class="section-card"><div class="section-head"><h2>Delivery Performance by Governorate</h2>' +
       '<label style="font-size:12px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="gov-worst-toggle" ' + (worstFirst ? "checked" : "") + '> Worst success rate first</label></div>' +
-      '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Revenue</th><th>Success Rate</th><th>Avg Time to Delivered</th></tr>';
+      '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Revenue</th><th>Success Rate</th><th>Avg Time to Delivered</th><th>Avg Shipping Charged</th></tr>';
     const rows = worstFirst
       ? sorted.slice().sort((a, b) => (a.success_rate ?? 1) - (b.success_rate ?? 1))
       : sorted;
     rows.forEach((g) => {
       html += "<tr><td>" + esc(g.name) + "</td><td>" + g.order_count + "</td><td>" + money(g.revenue) + "</td><td>" + pct(g.success_rate) + "</td><td>" +
         (g.avg_delivery_hours != null ? Math.round(g.avg_delivery_hours) + "h (n=" + g.avg_delivery_sample_size + ")" : "—") +
-        "</td></tr>";
+        "</td><td>" + (g.avg_shipping_cost != null ? money(g.avg_shipping_cost) : "—") + "</td></tr>";
     });
     html += "</table></div>" +
-      '<p class="chart-caption">"Avg Time to Delivered" measures order creation to Bosta\'s delivered signal, not guaranteed physical delivery time.</p></div>';
+      '<p class="chart-caption">"Avg Time to Delivered" measures order creation to Bosta\'s delivered signal, not guaranteed physical delivery time. "Avg Shipping Charged" is what customers paid for shipping on Easy Orders, not Bosta\'s actual cost to us (that data isn\'t available) — it shows where shipping fees are heaviest, not profit margin.</p></div>';
     root.innerHTML = html;
     document.getElementById("gov-worst-toggle").addEventListener("change", (e) => {
       worstFirst = e.target.checked;
@@ -325,6 +325,11 @@ function renderOrders(data) {
 
     if (isExpanded) {
       const items = (o.cart_items || []).map((it) => (it.product ? it.product.name : "Item") + " × " + it.quantity).join(", ") || "—";
+      const timeline = (o.bosta_timeline || []).length === 0
+        ? '<p class="empty" style="padding:8px 0;">No Bosta tracking events yet.</p>'
+        : '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--ink);">' +
+          o.bosta_timeline.map((e) => "<li>" + esc(e.state_name) + " — " + new Date(e.timestamp).toLocaleString() + "</li>").join("") +
+          "</ul>";
       html += '<tr class="detail-row"><td colspan="8"><div class="detail-grid">' +
         "<div><span>Address</span>" + esc(o.address || "—") + "</div>" +
         "<div><span>Payment</span>" + esc(o.payment_method || "—") + "</div>" +
@@ -332,6 +337,7 @@ function renderOrders(data) {
         "<div><span>Orders From This Phone</span>" + o.orders_count + "</div>" +
         "<div><span>Items</span>" + esc(items) + "</div>" +
         "</div>" +
+        '<div style="margin-bottom:12px;"><span style="display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Delivery Timeline</span>' + timeline + "</div>" +
         '<select class="status-select" data-order-id="' + o.order_id + '">' +
         VALID_STATUSES.map((s) => '<option value="' + s + '" ' + (s === o.status ? "selected" : "") + ">" + s + "</option>").join("") +
         "</select>" +

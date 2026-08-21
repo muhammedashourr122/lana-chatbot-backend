@@ -160,11 +160,12 @@ async function computeAdminData() {
   validRows.forEach((r) => {
     if (!r.government) return;
     if (!govMap[r.government]) {
-      govMap[r.government] = { name: r.government, order_count: 0, revenue: 0, delivered: 0, terminal: 0, deliveryHoursSamples: [] };
+      govMap[r.government] = { name: r.government, order_count: 0, revenue: 0, shippingRevenue: 0, delivered: 0, terminal: 0, deliveryHoursSamples: [] };
     }
     const g = govMap[r.government];
     g.order_count += 1;
     if (typeof r.total_cost === "number") g.revenue += r.total_cost;
+    if (typeof r.shipping_cost === "number") g.shippingRevenue += r.shipping_cost;
     if (isTerminalRow(r)) g.terminal += 1;
     if (isDeliveredRow(r)) {
       g.delivered += 1;
@@ -186,6 +187,11 @@ async function computeAdminData() {
         ? Math.round(g.deliveryHoursSamples.reduce((a, b) => a + b, 0) / g.deliveryHoursSamples.length)
         : null,
       avg_delivery_sample_size: g.deliveryHoursSamples.length,
+      // "Shipping revenue" is what customers were charged for shipping on
+      // Easy Orders, not Bosta's actual cost to us (we have no access to
+      // that) — this shows where shipping fees are heaviest, not margin.
+      avg_shipping_cost: g.order_count ? Math.round(g.shippingRevenue / g.order_count) : null,
+      total_shipping_revenue: g.shippingRevenue,
     }))
     .sort((a, b) => b.revenue - a.revenue);
 
@@ -268,6 +274,10 @@ async function computeAdminData() {
             needs_attention: r.delivery.needs_attention,
           }
         : null,
+      bosta_timeline: r.events.map((e) => ({
+        state_name: e.stateName,
+        timestamp: e.timestamp,
+      })),
     }))
     .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
