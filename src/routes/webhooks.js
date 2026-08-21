@@ -59,7 +59,7 @@ const BOSTA_STATE_NAMES = {
   105: "On hold",
 };
 
-router.post("/easyorders", (req, res) => {
+router.post("/easyorders", async (req, res) => {
   const secret = process.env.EASYORDERS_WEBHOOK_SECRET;
 
   if (!secret) {
@@ -82,6 +82,18 @@ router.post("/easyorders", (req, res) => {
   console.log("EasyOrders Webhook Received");
   console.log("=================================");
   console.log(JSON.stringify(req.body, null, 2));
+
+  // Order Created events include id + phone directly — index them right
+  // away so every order is searchable by phone from the moment it's
+  // placed, not just once someone looks it up or Bosta ships it.
+  const { id, phone } = req.body || {};
+  if (id && phone) {
+    try {
+      await indexPhoneToOrder(phone, id);
+    } catch (error) {
+      console.error("Failed to index phone from Easy Orders webhook:", error.message);
+    }
+  }
 
   res.json({
     success: true,
