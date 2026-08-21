@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lana Beauty — Admin Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --ink: #3a2e2c; --muted: #8b7d82; --paper: #f6ece7; --card: #ffffff; --accent: #6C4452; --border: #ece1dc; --danger-text: #c0392b; }
+  * { box-sizing: border-box; }
+  body { font-family: "Inter", -apple-system, sans-serif; background: var(--paper); color: var(--ink); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { background: var(--card); border-radius: 16px; box-shadow: 0 4px 20px rgba(58,46,44,0.08); padding: 36px; width: 100%; max-width: 340px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.sub { color: var(--muted); font-size: 13px; margin: 0 0 24px; }
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+  input:focus { outline: none; border-color: var(--accent); }
+  button { width: 100%; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: 0.6; cursor: default; }
+  .error { color: var(--danger-text); font-size: 13px; margin: -8px 0 16px; display: none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Lana Beauty Dashboard</h1>
+  <p class="sub">Sign in to continue</p>
+  <form id="login-form">
+    <label for="username">Username</label>
+    <input type="text" id="username" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input type="password" id="password" autocomplete="current-password" required>
+    <p class="error" id="login-error"></p>
+    <button type="submit" id="login-btn">Sign in</button>
+  </form>
+</div>
+<script>
+  document.getElementById("login-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var btn = document.getElementById("login-btn");
+    var errorEl = document.getElementById("login-error");
+    errorEl.style.display = "none";
+    btn.disabled = true;
+    btn.textContent = "Signing in…";
+
+    fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+      }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data.success) {
+          window.location.href = "/admin/dashboard";
+        } else {
+          btn.disabled = false;
+          btn.textContent = "Sign in";
+          errorEl.textContent = data.error || "Invalid username or password";
+          errorEl.style.display = "block";
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = "Sign in";
+        errorEl.textContent = "Network error.";
+        errorEl.style.display = "block";
+      });
+  });
+</script>
+</body>
+</html>

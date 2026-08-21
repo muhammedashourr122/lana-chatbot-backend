@@ -4,6 +4,9 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[c]));
 
+let currentUser = null;
+let VALID_STATUSES = [];
+
 const REASON_LABELS = {
   delivery_exception: "Delivery Exception",
   silent_dispatch: "No Bosta Signal",
@@ -133,22 +136,29 @@ function renderOverview(data) {
   const root = document.getElementById("overview-root");
   const s = data.stats;
 
-  const statsHtml = '<div class="stats-row">' +
-    '<div class="stat-card"><div class="num">' + money(s.revenue) + '</div><div class="label">Revenue</div></div>' +
-    '<div class="stat-card"><div class="num">' + s.total_orders + '</div><div class="label">Orders</div></div>' +
-    '<div class="stat-card"><div class="num">' + money(s.avg_order_value) + '</div><div class="label">Avg Order Value</div></div>' +
-    '<div class="stat-card"><div class="num">' + pct(s.delivery_success_rate) + '</div><div class="label">Delivery Success Rate</div></div>' +
-    '<div class="stat-card"><div class="num">' + money(s.cod_collected) + '</div><div class="label">COD Collected</div></div>' +
-    '<div class="stat-card"><div class="num">' + money(s.cod_pending) + '</div><div class="label">COD Pending</div></div>' +
-    '<div class="stat-card"><div class="num">' + s.repeat_customers + '</div><div class="label">Repeat Customers</div></div>' +
-    "</div>";
+  // Financial fields are omitted entirely from the API response for a
+  // moderator session — feature-detect their presence instead of
+  // checking role here, so the API redaction stays the single source
+  // of truth and nothing financial ever reaches the DOM for them.
+  const cards = [];
+  if ("revenue" in s) cards.push('<div class="stat-card"><div class="num">' + money(s.revenue) + '</div><div class="label">Revenue</div></div>');
+  cards.push('<div class="stat-card"><div class="num">' + s.total_orders + '</div><div class="label">Orders</div></div>');
+  if ("avg_order_value" in s) cards.push('<div class="stat-card"><div class="num">' + money(s.avg_order_value) + '</div><div class="label">Avg Order Value</div></div>');
+  cards.push('<div class="stat-card"><div class="num">' + pct(s.delivery_success_rate) + '</div><div class="label">Delivery Success Rate</div></div>');
+  if ("cod_collected" in s) cards.push('<div class="stat-card"><div class="num">' + money(s.cod_collected) + '</div><div class="label">COD Collected</div></div>');
+  if ("cod_pending" in s) cards.push('<div class="stat-card"><div class="num">' + money(s.cod_pending) + '</div><div class="label">COD Pending</div></div>');
+  cards.push('<div class="stat-card"><div class="num">' + s.repeat_customers + '</div><div class="label">Repeat Customers</div></div>');
+
+  const statsHtml = '<div class="stats-row">' + cards.join("") + "</div>";
 
   const statusPills = Object.entries(data.status_counts || {})
     .map(([status, count]) => '<span class="status-pill">' + esc(status) + ": " + count + "</span>")
     .join("");
 
-  const chartHtml = '<div class="section-card"><h2>Revenue — Last 30 Days</h2>' +
-    '<div class="chart-wrap">' + revenueChartSvg(data.revenue_trend) + "</div></div>";
+  const chartHtml = data.revenue_trend
+    ? '<div class="section-card"><h2>Revenue — Last 30 Days</h2>' +
+      '<div class="chart-wrap">' + revenueChartSvg(data.revenue_trend) + "</div></div>"
+    : "";
 
   root.innerHTML = statsHtml +
     '<div class="section-card" style="padding:14px 20px;">' + statusPills + "</div>" +
@@ -161,8 +171,9 @@ function renderNeedsAttention(items) {
     root.innerHTML = '<div class="section-card"><h2>Needs Attention</h2><p class="empty">Nothing needs attention right now.</p></div>';
     return;
   }
+  const showMoney = "total_cost" in items[0];
   let html = '<div class="section-card"><h2>Needs Attention (' + items.length + ")</h2>" +
-    '<div class="table-scroll"><table><tr><th>Order #</th><th>Reasons</th><th>Customer</th><th>EasyOrders Status</th><th>Bosta State</th><th>Total</th><th>Actions</th></tr>';
+    '<div class="table-scroll"><table><tr><th>Order #</th><th>Reasons</th><th>Customer</th><th>EasyOrders Status</th><th>Bosta State</th>' + (showMoney ? "<th>Total</th>" : "") + "<th>Actions</th></tr>";
   items.forEach((it) => {
     const reasons = it.reasons.map((r) => '<span class="reason-tag ' + r + '">' + REASON_LABELS[r] + "</span>").join("");
     html += '<tr class="attention">' +
@@ -171,7 +182,7 @@ function renderNeedsAttention(items) {
       "<td>" + esc(it.full_name) + "<br>" + esc(it.phone) + "</td>" +
       "<td>" + esc(it.easyorders_status) + "</td>" +
       "<td>" + esc(it.bosta_state_name || "—") + "</td>" +
-      "<td>" + money(it.total_cost) + "</td>" +
+      (showMoney ? "<td>" + money(it.total_cost) + "</td>" : "") +
       "<td>" + callLink(it.phone) + customerLink(it.phone) + printLink(it.order_id) + "</td>" +
       "</tr>";
   });
@@ -185,23 +196,28 @@ function renderGovernorates(governorates) {
     root.innerHTML = "";
     return;
   }
-  let sorted = governorates.slice().sort((a, b) => b.revenue - a.revenue);
+  const showMoney = "revenue" in governorates[0];
+  let sorted = governorates.slice().sort((a, b) => (showMoney ? b.revenue - a.revenue : b.order_count - a.order_count));
   let worstFirst = false;
 
   function draw() {
     let html = '<div class="section-card"><div class="section-head"><h2>Delivery Performance by Governorate</h2>' +
       '<label style="font-size:12px;color:var(--muted);cursor:pointer;"><input type="checkbox" id="gov-worst-toggle" ' + (worstFirst ? "checked" : "") + '> Worst success rate first</label></div>' +
-      '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Revenue</th><th>Success Rate</th><th>Avg Time to Delivered</th><th>Avg Shipping Charged</th></tr>';
+      '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th>' + (showMoney ? "<th>Revenue</th>" : "") + "<th>Success Rate</th><th>Avg Time to Delivered</th>" + (showMoney ? "<th>Avg Shipping Charged</th>" : "") + "</tr>";
     const rows = worstFirst
       ? sorted.slice().sort((a, b) => (a.success_rate ?? 1) - (b.success_rate ?? 1))
       : sorted;
     rows.forEach((g) => {
-      html += "<tr><td>" + esc(g.name) + "</td><td>" + g.order_count + "</td><td>" + money(g.revenue) + "</td><td>" + pct(g.success_rate) + "</td><td>" +
+      html += "<tr><td>" + esc(g.name) + "</td><td>" + g.order_count + "</td>" +
+        (showMoney ? "<td>" + money(g.revenue) + "</td>" : "") +
+        "<td>" + pct(g.success_rate) + "</td><td>" +
         (g.avg_delivery_hours != null ? Math.round(g.avg_delivery_hours) + "h (n=" + g.avg_delivery_sample_size + ")" : "—") +
-        "</td><td>" + (g.avg_shipping_cost != null ? money(g.avg_shipping_cost) : "—") + "</td></tr>";
+        "</td>" + (showMoney ? "<td>" + (g.avg_shipping_cost != null ? money(g.avg_shipping_cost) : "—") + "</td>" : "") + "</tr>";
     });
     html += "</table></div>" +
-      '<p class="chart-caption">"Avg Time to Delivered" measures order creation to Bosta\'s delivered signal, not guaranteed physical delivery time. "Avg Shipping Charged" is what customers paid for shipping on Easy Orders, not Bosta\'s actual cost to us (that data isn\'t available) — it shows where shipping fees are heaviest, not profit margin.</p></div>';
+      '<p class="chart-caption">"Avg Time to Delivered" measures order creation to Bosta\'s delivered signal, not guaranteed physical delivery time.' +
+      (showMoney ? ' "Avg Shipping Charged" is what customers paid for shipping on Easy Orders, not Bosta\'s actual cost to us (that data isn\'t available) — it shows where shipping fees are heaviest, not profit margin.' : "") +
+      "</p></div>";
     root.innerHTML = html;
     document.getElementById("gov-worst-toggle").addEventListener("change", (e) => {
       worstFirst = e.target.checked;
@@ -245,13 +261,6 @@ function statusBadge(status, bosta) {
   else if (bosta && bosta.needs_attention) cls = "attn";
   return '<span class="badge ' + cls + '">' + esc(status) + "</span>";
 }
-
-const VALID_STATUSES = [
-  "pending", "confirmed", "pending_payment", "paid", "paid_failed",
-  "processing", "waiting_for_pickup", "in_delivery", "delivered",
-  "canceled", "returning_from_delivery", "request_refund",
-  "refund_in_progress", "refunded",
-];
 
 function loadOrders() {
   const params = new URLSearchParams({ page: ordersState.page, page_size: ordersState.pageSize });
@@ -307,8 +316,11 @@ function renderOrders(data) {
     return;
   }
 
+  const showMoney = data.orders.length > 0 && "total_cost" in data.orders[0];
+  const colCount = showMoney ? 8 : 7;
+
   html += '<div class="table-scroll"><table>' +
-    '<tr><th><input type="checkbox" id="select-all-checkbox"></th><th>Order #</th><th>EasyOrders Status</th><th>Bosta State</th><th>Customer</th><th>Governorate</th><th>Total</th><th>Actions</th></tr>';
+    '<tr><th><input type="checkbox" id="select-all-checkbox"></th><th>Order #</th><th>EasyOrders Status</th><th>Bosta State</th><th>Customer</th><th>Governorate</th>' + (showMoney ? "<th>Total</th>" : "") + "<th>Actions</th></tr>";
 
   data.orders.forEach((o) => {
     const isExpanded = ordersState.expandedOrderId === o.order_id;
@@ -319,7 +331,7 @@ function renderOrders(data) {
       "<td>" + (o.bosta ? esc(o.bosta.state_name) + " (" + o.bosta.hours_since_update + "h ago)" : "—") + "</td>" +
       "<td>" + esc(o.full_name) + "<br>" + esc(o.phone) + "</td>" +
       "<td>" + esc(o.government) + "</td>" +
-      "<td>" + money(o.total_cost) + "</td>" +
+      (showMoney ? "<td>" + money(o.total_cost) + "</td>" : "") +
       "<td>" + callLink(o.phone) + customerLink(o.phone) + printLink(o.order_id) + "</td>" +
       "</tr>";
 
@@ -330,10 +342,10 @@ function renderOrders(data) {
         : '<ul style="margin:0;padding-left:18px;font-size:12px;color:var(--ink);">' +
           o.bosta_timeline.map((e) => "<li>" + esc(e.state_name) + " — " + new Date(e.timestamp).toLocaleString() + "</li>").join("") +
           "</ul>";
-      html += '<tr class="detail-row"><td colspan="8"><div class="detail-grid">' +
+      html += '<tr class="detail-row"><td colspan="' + colCount + '"><div class="detail-grid">' +
         "<div><span>Address</span>" + esc(o.address || "—") + "</div>" +
         "<div><span>Payment</span>" + esc(o.payment_method || "—") + "</div>" +
-        "<div><span>Shipping Cost</span>" + money(o.shipping_cost) + "</div>" +
+        ("shipping_cost" in o ? "<div><span>Shipping Cost</span>" + money(o.shipping_cost) + "</div>" : "") +
         "<div><span>Orders From This Phone</span>" + o.orders_count + "</div>" +
         "<div><span>Items</span>" + esc(items) + "</div>" +
         "</div>" +
@@ -464,6 +476,161 @@ function wireOrdersControls(data) {
   });
 }
 
+// ---------------- Settings (owner-only) ----------------
+
+function renderSettings() {
+  const root = document.getElementById("settings-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  fetch("/api/admin/settings")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = ""; return; }
+      const s = data.settings;
+      root.innerHTML = '<div class="section-card"><h2>Settings <span class="hint">— thresholds used by Needs Attention / Low Stock</span></h2>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Stale Tracking (hours)</span><input type="number" id="set-staleHours" value="' + s.staleHours + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
+        '<div><span>Stuck Payment (hours)</span><input type="number" id="set-pendingStaleHours" value="' + s.pendingStaleHours + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
+        '<div><span>Silent Dispatch (hours)</span><input type="number" id="set-silentDispatchHours" value="' + s.silentDispatchHours + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
+        '<div><span>Low Stock Threshold</span><input type="number" id="set-lowStockThreshold" value="' + s.lowStockThreshold + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
+        "</div>" +
+        '<button id="save-settings-btn" class="btn">Save Settings</button> <span id="settings-msg"></span></div>';
+
+      document.getElementById("save-settings-btn").addEventListener("click", () => {
+        const msg = document.getElementById("settings-msg");
+        const body = {
+          staleHours: document.getElementById("set-staleHours").value,
+          pendingStaleHours: document.getElementById("set-pendingStaleHours").value,
+          silentDispatchHours: document.getElementById("set-silentDispatchHours").value,
+          lowStockThreshold: document.getElementById("set-lowStockThreshold").value,
+        };
+        msg.textContent = "Saving…";
+        fetch("/api/admin/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) {
+              msg.textContent = "Saved.";
+              msg.style.color = "#2e7d32";
+              loadAll();
+            } else {
+              msg.textContent = result.error || "Failed to save.";
+              msg.style.color = "#c0392b";
+            }
+          });
+      });
+    })
+    .catch(() => { root.innerHTML = ""; });
+}
+
+// ---------------- Users management (owner-only) ----------------
+
+function renderUsers() {
+  const root = document.getElementById("users-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  fetch("/api/admin/users")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = ""; return; }
+      let html = '<div class="section-card"><h2>Moderators & Owners</h2>' +
+        '<div class="table-scroll"><table><tr><th>Username</th><th>Role</th><th>Created</th><th></th></tr>';
+      data.users.forEach((u) => {
+        html += "<tr><td>" + esc(u.username) + "</td><td>" + esc(u.role) + "</td><td>" + new Date(Number(u.createdAt)).toLocaleDateString() + "</td>" +
+          '<td>' + (u.username === currentUser.username ? "" : '<a class="action-link delete-user-link" href="#" data-username="' + esc(u.username) + '">Remove</a>') + "</td></tr>";
+      });
+      html += "</table></div>" +
+        '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">' +
+        '<input type="text" id="new-user-username" placeholder="username" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">' +
+        '<input type="password" id="new-user-password" placeholder="password (6+ chars)" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;">' +
+        '<select id="new-user-role" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;"><option value="moderator">Moderator</option><option value="owner">Owner</option></select>' +
+        '<button id="create-user-btn" class="btn">Add User</button>' +
+        '<span id="users-msg"></span></div></div>';
+      root.innerHTML = html;
+
+      document.querySelectorAll(".delete-user-link").forEach((a) => {
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          if (!confirm('Remove user "' + a.getAttribute("data-username") + '"?')) return;
+          fetch("/api/admin/users/" + encodeURIComponent(a.getAttribute("data-username")), { method: "DELETE" })
+            .then((res) => res.json())
+            .then((result) => {
+              if (result.success) renderUsers();
+              else alert(result.error || "Failed to remove user");
+            });
+        });
+      });
+
+      document.getElementById("create-user-btn").addEventListener("click", () => {
+        const msg = document.getElementById("users-msg");
+        const username = document.getElementById("new-user-username").value.trim();
+        const password = document.getElementById("new-user-password").value;
+        const role = document.getElementById("new-user-role").value;
+        msg.textContent = "Adding…";
+        fetch("/api/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password, role }),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) renderUsers();
+            else { msg.textContent = result.error || "Failed to add user"; msg.style.color = "#c0392b"; }
+          });
+      });
+    })
+    .catch(() => { root.innerHTML = ""; });
+}
+
+// ---------------- Danger zone: reset all dashboard data (owner-only) ----------------
+
+function renderDangerZone() {
+  const root = document.getElementById("danger-zone-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  root.innerHTML = '<div class="section-card" style="border:1px solid var(--danger-text);">' +
+    '<h2 style="color:var(--danger-text);">Danger Zone</h2>' +
+    '<p class="empty" style="text-align:left;padding:0 0 12px;">Wipes this dashboard\'s order index (tracking history, phone lookups) so it starts clean from today. Real orders on Easy Orders are NOT affected — only this app\'s own memory of them. This cannot be undone.</p>' +
+    '<button id="open-reset-modal-btn" class="btn" style="background:var(--danger-text);">Reset Dashboard Data</button>' +
+    "</div>";
+
+  document.getElementById("open-reset-modal-btn").addEventListener("click", () => {
+    const typed = prompt('This cannot be undone. Type RESET (all caps) to confirm:');
+    if (typed !== "RESET") {
+      if (typed !== null) alert("Did not match — nothing was reset.");
+      return;
+    }
+    fetch("/api/admin/reset-data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirm: "RESET" }),
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) {
+          alert("Reset complete. Tracking keys deleted: " + result.tracking_keys_deleted + ", phone keys deleted: " + result.phone_keys_deleted);
+          loadAll();
+        } else {
+          alert(result.error || "Reset failed");
+        }
+      });
+  });
+}
+
+// ---------------- User menu ----------------
+
+function renderUserMenu() {
+  const el = document.getElementById("user-menu");
+  el.innerHTML = '<span style="font-size:12px;color:var(--muted);">' + esc(currentUser.username) + " (" + esc(currentUser.role) + ')</span>' +
+    '<button id="logout-btn" class="action-link" style="background:none;border:none;cursor:pointer;padding:0;">Log out</button>';
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    fetch("/api/auth/logout", { method: "POST" }).then(() => { window.location.href = "/admin/login"; });
+  });
+}
+
 // ---------------- Orchestration ----------------
 
 function loadAttentionAndOverview() {
@@ -484,13 +651,38 @@ function loadAll() {
   return Promise.all([loadAttentionAndOverview(), loadOrders()]);
 }
 
-wireSearch();
-loadAll().catch((err) => {
-  console.error(err);
-  document.getElementById("overview-root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
-});
+function init() {
+  fetch("/api/admin/me")
+    .then((res) => {
+      if (res.status === 401) {
+        window.location.href = "/admin/login";
+        return null;
+      }
+      return res.json();
+    })
+    .then((data) => {
+      if (!data || !data.success) return;
+      currentUser = { username: data.username, role: data.role };
+      VALID_STATUSES = data.allowed_statuses;
+
+      renderUserMenu();
+      wireSearch();
+      renderSettings();
+      renderUsers();
+      renderDangerZone();
+
+      return loadAll();
+    })
+    .catch((err) => {
+      console.error(err);
+      document.getElementById("overview-root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
+    });
+}
+
+init();
 
 setInterval(() => {
+  if (!currentUser) return;
   loadAll();
   document.getElementById("refresh-note").textContent = "· Last refreshed " + new Date().toLocaleTimeString();
 }, 30000);

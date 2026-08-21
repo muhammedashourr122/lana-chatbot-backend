@@ -12,15 +12,14 @@ const {
 } = require("../tracking-store");
 const adminCache = require("../lib/admin-cache");
 const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
+const { requireOwner } = require("./auth");
+const usersStore = require("../lib/users-store");
+const { resetAllTrackingData } = require("../tracking-store");
 
 const router = express.Router();
 
-const STALE_HOURS = 48;
-const PENDING_STALE_HOURS = 24;
-const SILENT_DISPATCH_HOURS = 24;
 const TERMINAL_STATUSES = ["delivered", "canceled", "refunded"];
 const ATTENTION_STATES = [47, 100, 101, 102, 103, 105]; // Exception, Lost, Damaged, Investigation, Awaiting action, On hold
-const LOW_STOCK_THRESHOLD = 5;
 
 const VALID_ORDER_STATUSES = [
   "pending", "confirmed", "pending_payment", "paid", "paid_failed",
@@ -34,6 +33,12 @@ const VALID_ORDER_STATUSES = [
 // admin-cache so a 30s poll from any number of open tabs only triggers
 // this computation once per cache window, not once per request.
 async function computeAdminData() {
+  const settings = await usersStore.getSettings();
+  const STALE_HOURS = settings.staleHours;
+  const PENDING_STALE_HOURS = settings.pendingStaleHours;
+  const SILENT_DISPATCH_HOURS = settings.silentDispatchHours;
+  const LOW_STOCK_THRESHOLD = settings.lowStockThreshold;
+
   const orderIds = await getKnownOrderIds();
   const now = Date.now();
 
@@ -305,15 +310,35 @@ function getAdminData() {
   return adminCache.getOrCompute("admin-data", computeAdminData);
 }
 
+// Moderators must never receive revenue/financial fields in the JSON
+// response itself — not just have them hidden in the UI, since a
+// moderator could otherwise read them straight from devtools/curl.
+function isModerator(req) {
+  return req.user && req.user.role === "moderator";
+}
+function stripStats(stats) {
+  const { revenue, avg_order_value, cod_collected, cod_pending, ...safe } = stats;
+  return safe;
+}
+function stripGovernorate(g) {
+  const { revenue, total_shipping_revenue, avg_shipping_cost, ...safe } = g;
+  return safe;
+}
+function stripOrderMoney(o) {
+  const { total_cost, shipping_cost, ...safe } = o;
+  return safe;
+}
+
 router.get("/overview", async (req, res) => {
   try {
     const data = await getAdminData();
+    const moderator = isModerator(req);
     res.json({
       success: true,
-      stats: data.stats,
+      stats: moderator ? stripStats(data.stats) : data.stats,
       status_counts: data.status_counts,
-      revenue_trend: data.revenue_trend,
-      governorates: data.governorates,
+      revenue_trend: moderator ? undefined : data.revenue_trend,
+      governorates: moderator ? data.governorates.map(stripGovernorate) : data.governorates,
       top_products: data.top_products,
       low_stock: data.low_stock,
       needs_attention_count: data.needs_attention.length,
@@ -327,7 +352,8 @@ router.get("/overview", async (req, res) => {
 router.get("/needs-attention", async (req, res) => {
   try {
     const data = await getAdminData();
-    res.json({ success: true, items: data.needs_attention });
+    const items = isModerator(req) ? data.needs_attention.map(stripOrderMoney) : data.needs_attention;
+    res.json({ success: true, items });
   } catch (error) {
     console.error("Needs-attention error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load needs-attention" });
@@ -349,7 +375,8 @@ router.get("/orders", async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 25));
     const start = (page - 1) * pageSize;
-    const pageOrders = filtered.slice(start, start + pageSize);
+    let pageOrders = filtered.slice(start, start + pageSize);
+    if (isModerator(req)) pageOrders = pageOrders.map(stripOrderMoney);
 
     res.json({ success: true, page, page_size: pageSize, total: filtered.length, orders: pageOrders });
   } catch (error) {
@@ -385,13 +412,14 @@ router.get("/search", async (req, res) => {
       } catch (e) {}
     }
 
+    const moderator = isModerator(req);
     res.json({
       success: true,
       results: results.map((o) => ({
         order_id: o.id,
         short_id: o.short_id,
         status: o.status,
-        total_cost: o.total_cost,
+        total_cost: moderator ? undefined : o.total_cost,
         full_name: o.full_name,
         phone: o.phone,
         created_at: o.created_at,
@@ -421,6 +449,7 @@ router.get("/customer", async (req, res) => {
       )
     ).filter(Boolean);
 
+    const moderator = isModerator(req);
     const lifetimeValue = orders.reduce((sum, o) => sum + (o.total_cost || 0), 0);
 
     res.json({
@@ -428,13 +457,13 @@ router.get("/customer", async (req, res) => {
       full_name: orders[0] ? orders[0].full_name : null,
       phone,
       order_count: orders.length,
-      lifetime_value: lifetimeValue,
+      lifetime_value: moderator ? undefined : lifetimeValue,
       orders: orders
         .map((o) => ({
           order_id: o.id,
           short_id: o.short_id,
           status: o.status,
-          total_cost: o.total_cost,
+          total_cost: moderator ? undefined : o.total_cost,
           created_at: o.created_at,
         }))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at)),
@@ -454,6 +483,9 @@ router.post("/update-status", async (req, res) => {
     if (!VALID_ORDER_STATUSES.includes(status)) {
       return res.status(400).json({ success: false, error: "Invalid status" });
     }
+    if (isModerator(req) && !["confirmed", "canceled"].includes(status)) {
+      return res.status(403).json({ success: false, error: "Moderators can only set confirmed or canceled" });
+    }
 
     await updateOrderStatus(order_id, status);
     adminCache.invalidate("admin-data");
@@ -461,6 +493,94 @@ router.post("/update-status", async (req, res) => {
   } catch (error) {
     console.error("Admin status update error:", error.response?.data || error.message);
     res.status(error.response?.status || 500).json({ success: false, error: "Failed to update status" });
+  }
+});
+
+// ---- Owner-only: user management ----
+
+router.get("/users", requireOwner, async (req, res) => {
+  try {
+    const users = await usersStore.listUsers();
+    res.json({ success: true, users });
+  } catch (error) {
+    console.error("List users error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load users" });
+  }
+});
+
+router.post("/users", requireOwner, async (req, res) => {
+  try {
+    const { username, password, role } = req.body || {};
+    const user = await usersStore.createUser(username, password, role);
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.delete("/users/:username", requireOwner, async (req, res) => {
+  try {
+    await usersStore.deleteUser(req.params.username);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// ---- Owner-only: settings ----
+
+router.get("/settings", requireOwner, async (req, res) => {
+  try {
+    const settings = await usersStore.getSettings();
+    res.json({ success: true, settings });
+  } catch (error) {
+    console.error("Get settings error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load settings" });
+  }
+});
+
+router.post("/settings", requireOwner, async (req, res) => {
+  try {
+    const { staleHours, pendingStaleHours, silentDispatchHours, lowStockThreshold } = req.body || {};
+    const values = { staleHours, pendingStaleHours, silentDispatchHours, lowStockThreshold };
+
+    for (const [k, v] of Object.entries(values)) {
+      const n = Number(v);
+      if (!Number.isInteger(n) || n < 1 || n > 500) {
+        return res.status(400).json({ success: false, error: `${k} must be an integer between 1 and 500` });
+      }
+      values[k] = n;
+    }
+
+    const saved = await usersStore.saveSettings(values);
+    adminCache.invalidate("admin-data");
+    res.json({ success: true, settings: saved });
+  } catch (error) {
+    console.error("Save settings error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to save settings" });
+  }
+});
+
+// ---- Owner-only: destructive reset ----
+// Wipes the Redis-based order index (tracking events, phone lookups,
+// known-orders) so the dashboard starts clean from today. Never touches
+// real orders on Easy Orders, nor user accounts/settings. Requires an
+// exact confirmation string — deliberately more friction than a single
+// click, given this app's history of an accidental destructive API call.
+
+router.post("/reset-data", requireOwner, async (req, res) => {
+  try {
+    if (req.body?.confirm !== "RESET") {
+      return res.status(400).json({ success: false, error: 'Send {"confirm":"RESET"} to proceed' });
+    }
+
+    const result = await resetAllTrackingData();
+    adminCache.invalidate("admin-data");
+    console.log(`[ADMIN-RESET] Triggered by "${req.user.username}":`, result);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error("Reset data error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to reset data" });
   }
 });
 

@@ -67,10 +67,33 @@ async function getOrderIdsForPhone(phone) {
   return ids || [];
 }
 
+// Wipes every tracking/phone-index key so the dashboard starts clean from
+// today — never touches user:*/users-index/settings:admin (those live in
+// users-store.js and are a separate concern entirely). Real orders on Easy
+// Orders are untouched; this only resets our own Redis-based read model.
+async function resetAllTrackingData() {
+  const orderIds = await getKnownOrderIds();
+  const trackingKeys = orderIds.map((id) => key(id));
+
+  let cursor = "0";
+  const phoneKeys = [];
+  do {
+    const [nextCursor, keys] = await redis.scan(cursor, { match: "phone-orders:*", count: 200 });
+    phoneKeys.push(...keys);
+    cursor = nextCursor;
+  } while (cursor !== "0");
+
+  const allKeys = [...trackingKeys, ...phoneKeys, KNOWN_ORDERS_KEY];
+  if (allKeys.length > 0) await redis.del(...allKeys);
+
+  return { tracking_keys_deleted: trackingKeys.length, phone_keys_deleted: phoneKeys.length };
+}
+
 module.exports = {
   addTrackingEvent,
   getTrackingEvents,
   getKnownOrderIds,
   indexPhoneToOrder,
   getOrderIdsForPhone,
+  resetAllTrackingData,
 };

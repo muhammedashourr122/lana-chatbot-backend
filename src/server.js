@@ -7,6 +7,9 @@ const webhooksRouter = require("./routes/webhooks");
 const catalogRouter = require("./routes/catalog");
 const chatRouter = require("./routes/chat");
 const adminRouter = require("./routes/admin");
+const authRouter = require("./routes/auth");
+const { requireSession, meHandler } = authRouter;
+const { bootstrapOwnerFromEnv } = require("./lib/users-store");
 
 const {
   getProducts,
@@ -30,6 +33,12 @@ function normalizePhone(phone) {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render terminates TLS at its edge and forwards over plain HTTP
+// internally — trusting the proxy makes req.secure reflect the original
+// scheme via X-Forwarded-Proto, so the session cookie's Secure flag is
+// set correctly in production while still working over plain localhost.
+app.set("trust proxy", 1);
+
 const ALLOWED_ORIGINS = [
   "https://lana-beauty.com",
   "https://www.lana-beauty.com",
@@ -50,37 +59,21 @@ app.use(
 
 app.use(express.json());
 
-// Password-gate everything under /admin and /api/admin with HTTP Basic
-// Auth — the browser prompts once, caches the credentials, and resends
-// them automatically on every request (including same-origin fetch/POST
-// calls from the dashboard page itself). Nothing sensitive ends up in
-// the URL or browser history this way.
-function requireAdminAuth(req, res, next) {
-  const user = process.env.ADMIN_USER;
-  const pass = process.env.ADMIN_PASS;
+// Public auth endpoints — must be reachable with no session yet.
+app.use("/api/auth", authRouter);
+app.get("/admin/login", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/admin/login.html"));
+});
 
-  if (!user || !pass) {
-    return res.status(500).send("Admin credentials are not configured");
-  }
-
-  const header = req.headers.authorization || "";
-  const [, encoded] = header.split(" ");
-  const decoded = encoded ? Buffer.from(encoded, "base64").toString() : "";
-  const [reqUser, reqPass] = decoded.split(":");
-
-  if (reqUser === user && reqPass === pass) {
-    return next();
-  }
-
-  res.set("WWW-Authenticate", 'Basic realm="Lana Beauty Admin"');
-  res.status(401).send("Authentication required");
-}
-
-app.use(["/admin", "/api/admin"], requireAdminAuth);
+// Everything else under /admin and /api/admin requires a valid session
+// cookie (see routes/auth.js — real login page + Redis-backed sessions,
+// replacing the old shared HTTP Basic Auth credential).
+app.use(["/admin", "/api/admin"], requireSession);
 
 app.use("/api/webhooks", webhooksRouter);
 app.use("/api/catalog", catalogRouter);
 app.use("/api/chat", chatRouter);
+app.get("/api/admin/me", meHandler);
 app.use("/api/admin", adminRouter);
 
 app.get("/admin/dashboard", (req, res) => {
@@ -322,6 +315,10 @@ app.use((error, req, res, next) => {
     success: false,
     error: error.message,
   });
+});
+
+bootstrapOwnerFromEnv().catch((err) => {
+  console.error("[BOOTSTRAP] Failed to create owner account:", err.message);
 });
 
 app.listen(PORT, () => {
