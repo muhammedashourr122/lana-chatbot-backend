@@ -50,6 +50,34 @@ app.use(
 
 app.use(express.json());
 
+// Password-gate everything under /admin and /api/admin with HTTP Basic
+// Auth — the browser prompts once, caches the credentials, and resends
+// them automatically on every request (including same-origin fetch/POST
+// calls from the dashboard page itself). Nothing sensitive ends up in
+// the URL or browser history this way.
+function requireAdminAuth(req, res, next) {
+  const user = process.env.ADMIN_USER;
+  const pass = process.env.ADMIN_PASS;
+
+  if (!user || !pass) {
+    return res.status(500).send("Admin credentials are not configured");
+  }
+
+  const header = req.headers.authorization || "";
+  const [, encoded] = header.split(" ");
+  const decoded = encoded ? Buffer.from(encoded, "base64").toString() : "";
+  const [reqUser, reqPass] = decoded.split(":");
+
+  if (reqUser === user && reqPass === pass) {
+    return next();
+  }
+
+  res.set("WWW-Authenticate", 'Basic realm="Lana Beauty Admin"');
+  res.status(401).send("Authentication required");
+}
+
+app.use(["/admin", "/api/admin"], requireAdminAuth);
+
 app.use("/api/webhooks", webhooksRouter);
 app.use("/api/catalog", catalogRouter);
 app.use("/api/chat", chatRouter);
@@ -235,12 +263,10 @@ const STALE_HOURS = 48;
 const TERMINAL_STATUSES = ["delivered", "canceled", "refunded"];
 const ATTENTION_STATES = [47, 100, 101, 102, 103, 105]; // Exception, Lost, Damaged, Investigation, Awaiting action, On hold
 
+// Auth is now handled by the requireAdminAuth middleware (HTTP Basic
+// Auth) mounted on /api/admin above — this is a no-op kept so the
+// existing call sites below don't need to change.
 function checkAdminKey(req, res) {
-  const key = String(req.query.key || "");
-  if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
-    res.status(401).json({ success: false, error: "Unauthorized" });
-    return false;
-  }
   return true;
 }
 
@@ -362,6 +388,21 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
       hours_pending: Math.round((now - new Date(r.created_at).getTime()) / (1000 * 60 * 60)),
     }));
 
+    // Low stock: real quantity/track_stock from the product catalog,
+    // not derived from order history.
+    const LOW_STOCK_THRESHOLD = 5;
+    let lowStock = [];
+    try {
+      const productData = await getProducts({ limit: 200 });
+      const products = productData.data || productData;
+      lowStock = products
+        .filter((p) => p.track_stock && p.quantity <= LOW_STOCK_THRESHOLD)
+        .map((p) => ({ name: p.name, quantity: p.quantity }))
+        .sort((a, b) => a.quantity - b.quantity);
+    } catch (e) {
+      console.error("Low stock check failed:", e.message);
+    }
+
     res.json({
       success: true,
       stats: {
@@ -375,6 +416,7 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
       governorates,
       revenue_trend: revenueTrend,
       stuck_payments: stuckPayments,
+      low_stock: lowStock,
       total: deliveryRows.length,
       needs_attention: deliveryRows.filter((r) => r.delivery.needs_attention),
       all: deliveryRows,
@@ -509,11 +551,6 @@ app.post("/api/admin/update-status", async (req, res) => {
 });
 
 app.get("/admin/packing-slip/:orderId", async (req, res) => {
-  const key = String(req.query.key || "");
-  if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
-    return res.status(401).send("Unauthorized");
-  }
-
   let order;
   try {
     order = await getOrder(req.params.orderId);
@@ -568,8 +605,6 @@ ${itemsRows}
 });
 
 app.get("/admin/dashboard", (req, res) => {
-  const key = String(req.query.key || "");
-
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -675,7 +710,6 @@ app.get("/admin/dashboard", (req, res) => {
 <div id="root"><div class="skeleton"></div></div>
 
 <script>
-  var DASHBOARD_KEY = ${JSON.stringify(key)};
   var lastData = null;
   var state = {
     dateRange: "all",
@@ -683,6 +717,7 @@ app.get("/admin/dashboard", (req, res) => {
     sortDir: "desc",
     attentionOnly: false,
     expandedOrderId: null,
+    selectedOrderIds: new Set(),
   };
 
   function withinDateRange(dateStr) {
@@ -703,7 +738,7 @@ app.get("/admin/dashboard", (req, res) => {
   }
 
   function printLink(orderId) {
-    return '<a class="action-link" href="/admin/packing-slip/' + orderId + '?key=' + encodeURIComponent(DASHBOARD_KEY) + '" target="_blank" rel="noreferrer">Print slip</a>';
+    return '<a class="action-link" href="/admin/packing-slip/' + orderId + '" target="_blank" rel="noreferrer">Print slip</a>';
   }
 
   function customerLink(phone) {
@@ -717,7 +752,7 @@ app.get("/admin/dashboard", (req, res) => {
     panel.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
     panel.scrollIntoView({ behavior: "smooth", block: "center" });
 
-    fetch("/api/admin/customer?key=" + encodeURIComponent(DASHBOARD_KEY) + "&phone=" + encodeURIComponent(phone))
+    fetch("/api/admin/customer?phone=" + encodeURIComponent(phone))
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data.success) {
@@ -787,7 +822,7 @@ app.get("/admin/dashboard", (req, res) => {
 
     resultsEl.innerHTML = '<p class="empty">Searching…</p>';
 
-    fetch("/api/admin/search?key=" + encodeURIComponent(DASHBOARD_KEY) + "&q=" + encodeURIComponent(q))
+    fetch("/api/admin/search?q=" + encodeURIComponent(q))
       .then(function (res) { return res.json(); })
       .then(function (data) {
         if (!data.success || data.results.length === 0) {
@@ -864,6 +899,16 @@ app.get("/admin/dashboard", (req, res) => {
               '</tr>';
           });
           stuckPaymentsHtml += '</table></div></div>';
+        }
+
+        var lowStockHtml = '';
+        if (data.low_stock && data.low_stock.length > 0) {
+          lowStockHtml = '<div class="section-card"><h2>Low Stock (' + data.low_stock.length + ')</h2>' +
+            '<div class="table-scroll"><table><tr><th>Product</th><th>Quantity Left</th></tr>';
+          data.low_stock.forEach(function (p) {
+            lowStockHtml += '<tr class="attention"><td data-label="Product">' + p.name + '</td><td data-label="Quantity">' + p.quantity + '</td></tr>';
+          });
+          lowStockHtml += '</table></div></div>';
         }
 
         var topProductsHtml = '<div class="section-card"><h2>Top Products</h2>';
@@ -952,10 +997,24 @@ app.get("/admin/dashboard", (req, res) => {
             '</select>' +
             '<button id="export-btn">Export CSV</button>' +
           '</div>';
+
+        var selectedCount = state.selectedOrderIds.size;
+        if (selectedCount > 0) {
+          ordersHtml += '<div class="controls-row" style="background:#F1E4E8;padding:8px 12px;border-radius:8px;">' +
+            '<span>' + selectedCount + ' selected</span>' +
+            '<select id="bulk-status-select">' +
+              ${JSON.stringify(VALID_ORDER_STATUSES)}.map(function (s) { return '<option value="' + s + '">' + s + '</option>'; }).join("") +
+            '</select>' +
+            '<button class="status-btn" id="bulk-apply-btn">Apply to selected</button>' +
+            '<span id="bulk-msg" style="font-size:12px;"></span>' +
+          '</div>';
+        }
+
         if (filteredOrders.length === 0) {
           ordersHtml += '<div class="empty">No orders in this range.</div>';
         } else {
           ordersHtml += '<div class="table-scroll"><table><tr>' +
+            '<th><input type="checkbox" id="select-all-checkbox" /></th>' +
             '<th class="sortable" data-sort="short_id">Order #' + sortArrow("short_id") + '</th>' +
             '<th class="sortable" data-sort="full_name">Name' + sortArrow("full_name") + '</th>' +
             '<th class="sortable" data-sort="status">Status' + sortArrow("status") + '</th>' +
@@ -965,7 +1024,9 @@ app.get("/admin/dashboard", (req, res) => {
           sortedOrders.forEach(function (o) {
             var dateStr = o.created_at ? new Date(o.created_at).toLocaleDateString() : '—';
             var isExpanded = state.expandedOrderId === o.order_id;
+            var isChecked = state.selectedOrderIds.has(o.order_id);
             ordersHtml += '<tr class="order-row" data-order-id="' + o.order_id + '">' +
+              '<td data-label="Select"><input type="checkbox" class="row-checkbox" data-order-id="' + o.order_id + '" ' + (isChecked ? 'checked' : '') + ' /></td>' +
               '<td data-label="Order #">' + (o.short_id != null ? '#' + o.short_id : o.order_id.slice(0, 8)) + '</td>' +
               '<td data-label="Name">' + (o.full_name || '—') + '</td>' +
               '<td data-label="Status">' + (o.status || '—') + '</td>' +
@@ -984,7 +1045,7 @@ app.get("/admin/dashboard", (req, res) => {
                 return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + s + '</option>';
               }).join("");
 
-              ordersHtml += '<tr class="detail-row"><td colspan="6">' +
+              ordersHtml += '<tr class="detail-row"><td colspan="7">' +
                 '<div class="detail-grid">' +
                   '<div><span>Phone</span>' + (o.phone || '—') + '</div>' +
                   '<div><span>Governorate</span>' + (o.government || '—') + '</div>' +
@@ -1005,7 +1066,7 @@ app.get("/admin/dashboard", (req, res) => {
         }
         ordersHtml += '</div>';
 
-        root.innerHTML = statsHtml + statusHtml + revenueChartHtml + stuckPaymentsHtml +
+        root.innerHTML = statsHtml + statusHtml + revenueChartHtml + stuckPaymentsHtml + lowStockHtml +
           '<div class="two-col">' + topProductsHtml + govHtml + '</div>' +
           deliveryHtml + ordersHtml;
 
@@ -1039,14 +1100,71 @@ app.get("/admin/dashboard", (req, res) => {
 
         document.querySelectorAll("tr.order-row").forEach(function (tr) {
           tr.addEventListener("click", function (e) {
-            if (e.target.closest(".action-link")) return;
+            if (e.target.closest(".action-link") || e.target.closest("input")) return;
             var id = tr.getAttribute("data-order-id");
             state.expandedOrderId = state.expandedOrderId === id ? null : id;
             renderFromCache();
           });
         });
 
-        document.querySelectorAll(".status-btn").forEach(function (btn) {
+        document.querySelectorAll(".row-checkbox").forEach(function (cb) {
+          cb.addEventListener("click", function (e) { e.stopPropagation(); });
+          cb.addEventListener("change", function () {
+            var id = cb.getAttribute("data-order-id");
+            if (cb.checked) state.selectedOrderIds.add(id);
+            else state.selectedOrderIds.delete(id);
+            renderFromCache();
+          });
+        });
+
+        var selectAllCb = document.getElementById("select-all-checkbox");
+        if (selectAllCb) {
+          selectAllCb.addEventListener("change", function () {
+            document.querySelectorAll(".row-checkbox").forEach(function (cb) {
+              var id = cb.getAttribute("data-order-id");
+              if (selectAllCb.checked) state.selectedOrderIds.add(id);
+              else state.selectedOrderIds.delete(id);
+            });
+            renderFromCache();
+          });
+        }
+
+        var bulkApplyBtn = document.getElementById("bulk-apply-btn");
+        if (bulkApplyBtn) {
+          bulkApplyBtn.addEventListener("click", function () {
+            var newStatus = document.getElementById("bulk-status-select").value;
+            var msg = document.getElementById("bulk-msg");
+            var ids = Array.from(state.selectedOrderIds);
+
+            bulkApplyBtn.disabled = true;
+            msg.textContent = "Updating " + ids.length + "…";
+            msg.style.color = "#8b7d82";
+
+            Promise.all(
+              ids.map(function (id) {
+                return fetch("/api/admin/update-status", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ order_id: id, status: newStatus }),
+                }).then(function (res) { return res.json(); });
+              })
+            ).then(function (results) {
+              var failed = results.filter(function (r) { return !r.success; }).length;
+              bulkApplyBtn.disabled = false;
+              if (failed === 0) {
+                msg.textContent = "Updated all " + ids.length + "!";
+                msg.style.color = "#2e7d32";
+                state.selectedOrderIds.clear();
+                loadDashboard();
+              } else {
+                msg.textContent = failed + " of " + ids.length + " failed.";
+                msg.style.color = "#c0392b";
+              }
+            });
+          });
+        }
+
+        document.querySelectorAll(".status-btn:not(#bulk-apply-btn)").forEach(function (btn) {
           btn.addEventListener("click", function (e) {
             e.stopPropagation();
             var orderId = btn.getAttribute("data-order-id");
@@ -1058,7 +1176,7 @@ app.get("/admin/dashboard", (req, res) => {
             msg.textContent = "Updating…";
             msg.style.color = "#8b7d82";
 
-            fetch("/api/admin/update-status?key=" + encodeURIComponent(DASHBOARD_KEY), {
+            fetch("/api/admin/update-status", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ order_id: orderId, status: newStatus }),
@@ -1085,7 +1203,7 @@ app.get("/admin/dashboard", (req, res) => {
   }
 
   function loadDashboard() {
-    fetch("/api/admin/delivery-dashboard?key=" + encodeURIComponent(DASHBOARD_KEY))
+    fetch("/api/admin/delivery-dashboard")
       .then(function (res) { return res.json(); })
       .then(renderDashboard)
       .catch(function () {
