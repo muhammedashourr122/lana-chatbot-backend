@@ -12,7 +12,12 @@ const {
   getOrder,
   getOrderByShortId,
 } = require("./easyorders");
-const { getTrackingEvents } = require("./tracking-store");
+const {
+  getTrackingEvents,
+  getKnownOrderIds,
+  indexPhoneToOrder,
+  getOrderIdsForPhone,
+} = require("./tracking-store");
 
 function normalizePhone(phone) {
   const digits = String(phone || "").replace(/\D/g, "");
@@ -140,6 +145,8 @@ app.get("/api/track-order", async (req, res) => {
       return genericError();
     }
 
+    indexPhoneToOrder(order.phone, order.id).catch(function () {});
+
     res.json({
       success: true,
       order_id: order.id,
@@ -171,6 +178,113 @@ app.get("/api/tracking-events/:orderId", async (req, res) => {
   } catch (error) {
     console.error("Tracking events error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load tracking events" });
+  }
+});
+
+// Returns every order this phone number has looked up before (via
+// /api/track-order) or that a Bosta webhook fired for. Only builds up
+// over time — a phone that's never triggered either of those won't
+// have any history yet.
+app.get("/api/orders-by-phone", async (req, res) => {
+  try {
+    const phone = String(req.query.phone || "").trim();
+    if (!phone) {
+      return res.status(400).json({ success: false, error: "phone is required" });
+    }
+
+    const orderIds = await getOrderIdsForPhone(phone);
+    if (orderIds.length === 0) {
+      return res.json({ success: true, orders: [] });
+    }
+
+    const orders = await Promise.all(
+      orderIds.map(async (id) => {
+        try {
+          const order = await getOrder(id);
+          return {
+            order_id: order.id,
+            short_id: order.short_id,
+            status: order.status,
+            total_cost: order.total_cost,
+            created_at: order.created_at,
+          };
+        } catch (e) {
+          return null;
+        }
+      })
+    );
+
+    const validOrders = orders
+      .filter(Boolean)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    res.json({ success: true, orders: validOrders });
+  } catch (error) {
+    console.error("Orders by phone error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load orders" });
+  }
+});
+
+// Private merchant dashboard: flags orders whose latest Bosta event is
+// stale (no update in STALE_HOURS) and not in a terminal state, plus
+// anything sitting in an exception-type state. Protected by a shared
+// secret query param since it's not meant to be public.
+const STALE_HOURS = 48;
+const TERMINAL_STATUSES = ["delivered", "canceled", "refunded"];
+const ATTENTION_STATES = [47, 100, 101, 102, 103, 105]; // Exception, Lost, Damaged, Investigation, Awaiting action, On hold
+
+app.get("/api/admin/delivery-dashboard", async (req, res) => {
+  try {
+    const key = String(req.query.key || "");
+    if (!process.env.ADMIN_DASHBOARD_KEY || key !== process.env.ADMIN_DASHBOARD_KEY) {
+      return res.status(401).json({ success: false, error: "Unauthorized" });
+    }
+
+    const orderIds = await getKnownOrderIds();
+    const now = Date.now();
+
+    const rows = await Promise.all(
+      orderIds.map(async (id) => {
+        const events = await getTrackingEvents(id);
+        if (events.length === 0) return null;
+
+        const latest = events[events.length - 1];
+        const hoursSinceUpdate = (now - latest.timestamp) / (1000 * 60 * 60);
+
+        let order = null;
+        try {
+          order = await getOrder(id);
+        } catch (e) {}
+
+        const status = order ? order.status : null;
+        const isTerminal = status && TERMINAL_STATUSES.includes(status);
+        const needsAttention =
+          ATTENTION_STATES.includes(latest.state) ||
+          (!isTerminal && hoursSinceUpdate > STALE_HOURS);
+
+        return {
+          order_id: id,
+          short_id: order ? order.short_id : null,
+          status,
+          latest_state: latest.stateName,
+          tracking_number: latest.trackingNumber,
+          hours_since_update: Math.round(hoursSinceUpdate),
+          needs_attention: needsAttention,
+        };
+      })
+    );
+
+    const validRows = rows.filter(Boolean);
+
+    res.json({
+      success: true,
+      total: validRows.length,
+      needs_attention: validRows.filter((r) => r.needs_attention),
+      all: validRows,
+    });
+  } catch (error) {
+    console.error("Delivery dashboard error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load dashboard" });
   }
 });
 

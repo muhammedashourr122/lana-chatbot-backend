@@ -1,6 +1,6 @@
 const express = require("express");
-const { updateOrderStatus, addOrderNote } = require("../easyorders");
-const { addTrackingEvent } = require("../tracking-store");
+const { updateOrderStatus, addOrderNote, getOrder } = require("../easyorders");
+const { addTrackingEvent, indexPhoneToOrder } = require("../tracking-store");
 
 const router = express.Router();
 
@@ -123,6 +123,15 @@ router.post("/bosta", async (req, res) => {
   } catch (error) {
     console.error("Failed to store tracking event in Upstash:", error.message);
     // Non-fatal — still proceed with the note/status update below.
+  }
+
+  try {
+    const order = await getOrder(businessReference);
+    if (order && order.phone) {
+      await indexPhoneToOrder(order.phone, businessReference);
+    }
+  } catch (error) {
+    // Non-fatal — order lookup failing shouldn't block the status sync.
   }
 
   if (trackingNumber) {
