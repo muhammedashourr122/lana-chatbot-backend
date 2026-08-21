@@ -288,6 +288,71 @@ app.get("/api/admin/delivery-dashboard", async (req, res) => {
   }
 });
 
+app.get("/admin/dashboard", (req, res) => {
+  const key = String(req.query.key || "");
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lana Beauty — Delivery Dashboard</title>
+<style>
+  body { font-family: -apple-system, sans-serif; background: #f6ece7; color: #3a2e2c; margin: 0; padding: 32px 16px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: #8b7d82; font-size: 13px; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 10px 14px; text-align: left; font-size: 13px; border-bottom: 1px solid #eee; }
+  th { background: #F1E4E8; color: #6C4452; font-weight: 600; }
+  tr.attention { background: #fdeaea; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.ok { background: #e6f4ea; color: #2e7d32; }
+  .badge.attn { background: #fbe4e4; color: #c0392b; }
+  .empty { text-align: center; padding: 40px; color: #8b7d82; }
+  .error { text-align: center; padding: 40px; color: #c0392b; }
+</style>
+</head>
+<body>
+<h1>Delivery Dashboard</h1>
+<p class="sub">Orders tracked via Bosta — flags anything stuck 48h+ or in an exception state.</p>
+<div id="root">Loading…</div>
+<script>
+  fetch("/api/admin/delivery-dashboard?key=${encodeURIComponent(key)}")
+    .then(function (res) { return res.json(); })
+    .then(function (data) {
+      var root = document.getElementById("root");
+      if (!data.success) {
+        root.innerHTML = '<div class="error">' + (data.error || "Unauthorized") + '</div>';
+        return;
+      }
+      if (data.all.length === 0) {
+        root.innerHTML = '<div class="empty">No tracked orders yet.</div>';
+        return;
+      }
+      var rows = data.all.slice().sort(function (a, b) {
+        return (b.needs_attention ? 1 : 0) - (a.needs_attention ? 1 : 0);
+      });
+      var html = '<table><tr><th>Order #</th><th>Status</th><th>Latest Bosta State</th><th>Tracking #</th><th>Hours Since Update</th><th>Flag</th></tr>';
+      rows.forEach(function (r) {
+        html += '<tr class="' + (r.needs_attention ? 'attention' : '') + '">' +
+          '<td>' + (r.short_id != null ? '#' + r.short_id : r.order_id.slice(0, 8)) + '</td>' +
+          '<td>' + (r.status || '—') + '</td>' +
+          '<td>' + (r.latest_state || '—') + '</td>' +
+          '<td>' + (r.tracking_number || '—') + '</td>' +
+          '<td>' + r.hours_since_update + 'h</td>' +
+          '<td><span class="badge ' + (r.needs_attention ? 'attn' : 'ok') + '">' + (r.needs_attention ? 'Needs attention' : 'OK') + '</span></td>' +
+          '</tr>';
+      });
+      html += '</table>';
+      root.innerHTML = html;
+    })
+    .catch(function () {
+      document.getElementById("root").innerHTML = '<div class="error">Failed to load dashboard.</div>';
+    });
+</script>
+</body>
+</html>`);
+});
+
 app.use((error, req, res, next) => {
   console.error("Server error:", error.message);
 
