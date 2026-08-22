@@ -371,6 +371,14 @@ router.get("/orders", async (req, res) => {
     if (req.query.government) {
       filtered = filtered.filter((o) => o.government === req.query.government);
     }
+    const q = String(req.query.q || "").trim().toLowerCase();
+    if (q) {
+      filtered = filtered.filter((o) =>
+        String(o.full_name || "").toLowerCase().includes(q) ||
+        String(o.phone || "").includes(q) ||
+        String(o.short_id || "").toLowerCase().includes(q)
+      );
+    }
 
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.page_size, 10) || 25));

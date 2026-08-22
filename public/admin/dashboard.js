@@ -255,7 +255,7 @@ function renderTopProductsAndLowStock(topProducts, lowStock) {
 
 // ---------------- Orders table (paginated, unified EO + Bosta) ----------------
 
-const ordersState = { page: 1, pageSize: 25, status: "", expandedOrderId: null, selectedOrderIds: new Set(), statuses: [] };
+const ordersState = { page: 1, pageSize: 25, status: "", q: "", expandedOrderId: null, selectedOrderIds: new Set(), statuses: [] };
 
 function statusBadge(status, bosta) {
   let cls = "neutral";
@@ -268,11 +268,24 @@ function statusBadge(status, bosta) {
 function loadOrders() {
   const params = new URLSearchParams({ page: ordersState.page, page_size: ordersState.pageSize });
   if (ordersState.status) params.set("status", ordersState.status);
+  if (ordersState.q) params.set("q", ordersState.q);
+
+  const searchInput = document.getElementById("orders-search-input");
+  const hadFocus = searchInput && document.activeElement === searchInput;
+  const cursorPos = hadFocus ? searchInput.selectionStart : null;
 
   return fetch("/api/admin/orders?" + params.toString())
     .then((res) => res.json())
     .then((data) => {
-      if (data.success) renderOrders(data);
+      if (!data.success) return;
+      renderOrders(data);
+      if (hadFocus) {
+        const newInput = document.getElementById("orders-search-input");
+        if (newInput) {
+          newInput.focus();
+          newInput.setSelectionRange(cursorPos, cursorPos);
+        }
+      }
     });
 }
 
@@ -298,6 +311,7 @@ function renderOrders(data) {
   let html = '<div class="section-card">' +
     '<div class="section-head"><h2>Orders (' + data.total + ')</h2>' +
     '<div class="controls-row" style="margin-bottom:0;">' +
+    '<input type="text" id="orders-search-input" placeholder="Name, phone, or order #" value="' + esc(ordersState.q) + '" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;min-width:200px;">' +
     '<select id="status-filter"><option value="">All statuses</option>' +
     VALID_STATUSES.map((s) => '<option value="' + s + '" ' + (ordersState.status === s ? "selected" : "") + ">" + s + "</option>").join("") +
     "</select>" +
@@ -372,11 +386,23 @@ function renderOrders(data) {
   wireOrdersControls(data);
 }
 
+let ordersSearchDebounce = null;
+
 function wireOrdersControls(data) {
   document.getElementById("status-filter").addEventListener("change", (e) => {
     ordersState.status = e.target.value;
     ordersState.page = 1;
     loadOrders();
+  });
+
+  document.getElementById("orders-search-input").addEventListener("input", (e) => {
+    const value = e.target.value;
+    clearTimeout(ordersSearchDebounce);
+    ordersSearchDebounce = setTimeout(() => {
+      ordersState.q = value.trim();
+      ordersState.page = 1;
+      loadOrders();
+    }, 300);
   });
 
   const exportBtn = document.getElementById("export-btn");
