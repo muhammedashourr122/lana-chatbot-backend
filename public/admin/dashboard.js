@@ -167,6 +167,9 @@ function renderOverview(data) {
 
 function renderNeedsAttention(items) {
   const root = document.getElementById("attention-root");
+  const badge = document.getElementById("attention-count-badge");
+  badge.textContent = items && items.length > 0 ? String(items.length) : "";
+
   if (!items || items.length === 0) {
     root.innerHTML = '<div class="section-card"><h2>Needs Attention</h2><p class="empty">Nothing needs attention right now.</p></div>';
     return;
