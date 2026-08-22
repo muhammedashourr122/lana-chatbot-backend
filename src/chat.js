@@ -350,6 +350,26 @@ async function chat(message) {
     };
   }
 
+  // A short message that's just a governorate name (no other keywords)
+  // is almost always a follow-up to a shipping question, since there's
+  // no other reason to type a bare city name — the widget doesn't send
+  // conversation history, so this is a lightweight way to keep that
+  // exchange feeling continuous instead of falling through to "no
+  // matching products." Kept short (just the cost), not the full policy
+  // text again, since repeating it every time would get repetitive.
+  const bareCity = detectCity(text);
+  if (bareCity && text.split(/\s+/).filter(Boolean).length <= 4) {
+    return {
+      success: true,
+      message: `مصاريف الشحن لـ ${bareCity}: ${SHIPPING_COSTS[bareCity]} جنيه. التوصيل بياخد من 2 لـ 5 أيام عمل حسب المحافظة.`,
+      intent: "shipping",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
   if (detectReturnQuestion(text)) {
     return {
       success: true,
