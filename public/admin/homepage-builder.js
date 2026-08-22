@@ -36,11 +36,15 @@ const SECTIONS = [
     ],
   },
   {
-    id: "offerBar",
-    label: "Offer Bar",
-    hint: "The scrolling strip at the very top of the page.",
+    id: "announcementBar",
+    label: "Announcement Bar",
+    hint: "The 3 rotating messages in the scrolling strip at the top of the page.",
     fields: [
-      { key: "offerBar.text", label: "Strip text", type: "text", wide: true },
+      { key: "announcementBar.item1.text", label: "Message 1", type: "text", wide: true },
+      { key: "announcementBar.item2.text", label: "Message 2 text", type: "text" },
+      { key: "announcementBar.item2.code", label: "Message 2 code", type: "text" },
+      { key: "announcementBar.item3.text", label: "Message 3 text", type: "text" },
+      { key: "announcementBar.item3.code", label: "Message 3 code", type: "text" },
     ],
   },
   {

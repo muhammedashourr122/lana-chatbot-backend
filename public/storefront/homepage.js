@@ -45,8 +45,14 @@
       setAttr("hero-button-link", "href", content.hero.buttonLink);
     }
 
-    if (content.offerBar) {
-      setText("offerbar-text", content.offerBar.text);
+    if (content.announcementBar) {
+      ["item1", "item2", "item3"].forEach(function (key) {
+        var item = content.announcementBar[key];
+        if (!item) return;
+        var n = key.slice(4);
+        setText("ann-" + n + "-text", item.text);
+        setText("ann-" + n + "-code", item.code);
+      });
     }
 
     if (content.bestSellers) {

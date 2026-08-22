@@ -20,8 +20,10 @@ const DEFAULT_HOMEPAGE_CONTENT = {
     buttonText: "Explore Scents",
     buttonLink: "/collections/all",
   },
-  offerBar: {
-    text: "BUY 3 GET 2 + FREE SHIPPING — USE CODE: EXPLORE5",
+  announcementBar: {
+    item1: { text: "FREE SHIPPING ON ORDERS OVER EGP 999" },
+    item2: { text: "BUY 2 OR MORE & SAVE 10% — USE CODE:", code: "SAVE10" },
+    item3: { text: "BUY 3 GET 2 + FREE SHIPPING — USE CODE:", code: "EXPLORE5" },
   },
   bestSellers: {
     eyebrow: "Our Favorites",
