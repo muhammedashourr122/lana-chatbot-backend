@@ -224,63 +224,9 @@
               أهلاً بيكي في Lana's Beauty 🤍
               <br>
 
-              قوليلي بتدوري على إيه وأنا أساعدك تلاقي الـ body splash المناسب ليكي.
+              قوليلي بتدوري على إيه — منتج معين، حالة طلبك، الشحن، الاسترجاع، أو أي عروض حالية.
 
             </div>
-
-          </div>
-
-
-          <!-- INITIAL SUGGESTIONS -->
-
-          <div
-            class="lana-suggestions"
-            id="lana-suggestions"
-          >
-
-            <button
-              class="lana-suggestion"
-              type="button"
-              data-action="recommend"
-            >
-              رشحيلي حاجة حلوة 🤍
-            </button>
-
-
-            <button
-              class="lana-suggestion"
-              type="button"
-              data-message="For Her"
-            >
-              For Her
-            </button>
-
-
-            <button
-              class="lana-suggestion"
-              type="button"
-              data-message="For Him"
-            >
-              For Him
-            </button>
-
-
-            <button
-              class="lana-suggestion"
-              type="button"
-              data-message="Unisex"
-            >
-              Unisex
-            </button>
-
-
-            <button
-              class="lana-suggestion"
-              type="button"
-              data-action="offers"
-            >
-              View Offers
-            </button>
 
           </div>
 
@@ -415,26 +361,6 @@
     }
 
 
-    function scrollToElement(element) {
-
-      if (!element) {
-        return;
-      }
-
-      requestAnimationFrame(
-        function () {
-
-          element.scrollIntoView({
-            behavior: "smooth",
-            block: "end"
-          });
-
-        }
-      );
-
-    }
-
-
     /* =====================================================
        HISTORY
        ===================================================== */
@@ -550,8 +476,6 @@
           }
         );
 
-
-        createSuggestions();
 
         scrollToBottom();
 
@@ -1253,209 +1177,6 @@
 
 
     /* =====================================================
-       SUGGESTIONS
-       ALWAYS AT BOTTOM
-       ===================================================== */
-
-    function createSuggestions() {
-
-      const old =
-        root.querySelector(
-          "#lana-suggestions"
-        );
-
-
-      if (old) {
-
-        old.remove();
-
-      }
-
-
-      const suggestions =
-        document.createElement(
-          "div"
-        );
-
-
-      suggestions.className =
-        "lana-suggestions";
-
-      suggestions.id =
-        "lana-suggestions";
-
-
-      suggestions.innerHTML = `
-
-        <button
-          class="lana-suggestion"
-          type="button"
-          data-action="recommend"
-        >
-          رشحيلي حاجة حلوة 🤍
-        </button>
-
-
-        <button
-          class="lana-suggestion"
-          type="button"
-          data-message="For Her"
-        >
-          For Her
-        </button>
-
-
-        <button
-          class="lana-suggestion"
-          type="button"
-          data-message="For Him"
-        >
-          For Him
-        </button>
-
-
-        <button
-          class="lana-suggestion"
-          type="button"
-          data-message="Unisex"
-        >
-          Unisex
-        </button>
-
-
-        <button
-          class="lana-suggestion"
-          type="button"
-          data-action="offers"
-        >
-          View Offers
-        </button>
-
-      `;
-
-
-      messages.appendChild(
-        suggestions
-      );
-
-
-      bindSuggestions(
-        suggestions
-      );
-
-
-      setTimeout(
-        function () {
-
-          scrollToElement(
-            suggestions
-          );
-
-        },
-        80
-      );
-
-    }
-
-
-    function bindSuggestions(
-      container
-    ) {
-
-      if (!container) {
-        return;
-      }
-
-
-      container
-        .querySelectorAll(
-          ".lana-suggestion"
-        )
-        .forEach(
-          function (button) {
-
-            button.addEventListener(
-              "click",
-              function () {
-
-                const action =
-                  button.getAttribute(
-                    "data-action"
-                  );
-
-
-                const message =
-                  button.getAttribute(
-                    "data-message"
-                  );
-
-
-                /*
-                 * OFFERS
-                 */
-
-                if (
-                  action ===
-                  "offers"
-                ) {
-
-                  container.remove();
-
-                  showOffers();
-
-                  createSuggestions();
-
-                  return;
-
-                }
-
-
-                /*
-                 * NORMAL RECOMMENDATION
-                 */
-
-                if (
-                  action ===
-                  "recommend"
-                ) {
-
-                  container.remove();
-
-                  sendMessage(
-                    "رشحيلي حاجة حلوة"
-                  );
-
-                  return;
-
-                }
-
-
-                /*
-                 * NORMAL API MESSAGE
-                 */
-
-                if (
-                  message
-                ) {
-
-                  container.remove();
-
-                  sendMessage(
-                    message
-                  );
-
-                }
-
-              }
-            );
-
-          }
-        );
-
-    }
-
-
-    /* =====================================================
        SEND
        ===================================================== */
 
@@ -1467,26 +1188,6 @@
         message,
         "user"
       );
-
-
-      /*
-       * Remove suggestions
-       * before request.
-       */
-
-      const currentSuggestions =
-        root.querySelector(
-          "#lana-suggestions"
-        );
-
-
-      if (
-        currentSuggestions
-      ) {
-
-        currentSuggestions.remove();
-
-      }
 
 
       input.value =
@@ -1554,7 +1255,8 @@
          */
 
         if (
-          data.message
+          data.message &&
+          data.intent !== "offers"
         ) {
 
           addMessage(
@@ -1583,12 +1285,18 @@
 
 
         /*
-         * ALWAYS CREATE
-         * SUGGESTIONS AFTER
-         * THE RESPONSE.
+         * OFFERS — triggered by the backend recognizing an offers
+         * question in the message text, not a button anymore.
          */
 
-        createSuggestions();
+        if (
+          data.intent ===
+          "offers"
+        ) {
+
+          showOffers();
+
+        }
 
 
         /*
@@ -1620,9 +1328,6 @@
           "حصلت مشكلة بسيطة وأنا بحاول أجيبلك المنتجات. جربي تاني بعد شوية 🤍",
           "assistant"
         );
-
-
-        createSuggestions();
 
       } finally {
 
@@ -1740,16 +1445,13 @@
               أهلاً بيكي في Lana's Beauty 🤍
               <br>
 
-              قوليلي بتدوري على إيه وأنا أساعدك تلاقي الـ body splash المناسب ليكي.
+              قوليلي بتدوري على إيه — منتج معين، حالة طلبك، الشحن، الاسترجاع، أو أي عروض حالية.
 
             </div>
 
           </div>
 
         `;
-
-
-        createSuggestions();
 
 
         scrollToBottom();
@@ -1762,36 +1464,7 @@
        LOAD HISTORY
        ===================================================== */
 
-    const historyLoaded =
-      loadHistory();
-
-
-    /*
-     * If there is no history,
-     * keep the default suggestions.
-     */
-
-    if (
-      !historyLoaded
-    ) {
-
-      const initial =
-        root.querySelector(
-          "#lana-suggestions"
-        );
-
-
-      if (
-        initial
-      ) {
-
-        bindSuggestions(
-          initial
-        );
-
-      }
-
-    }
+    loadHistory();
 
   }
 

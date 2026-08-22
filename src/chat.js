@@ -141,6 +141,19 @@ function detectThanks(text) {
   return ["شكرا", "متشكر", "تسلم", "thanks", "thank you", "thx"].some((w) => normalized.includes(w));
 }
 
+function detectOffersQuestion(text) {
+  const normalized = normalizeText(text);
+  return ["عروض", "عرض", "خصم", "كوبون", "كود خصم", "offer", "discount", "coupon", "promo"].some(
+    (w) => normalized.includes(w)
+  );
+}
+
+const OFFERS_REPLY =
+  "دلوقتي عندنا:\n" +
+  "• Buy 3 Get 2 + شحن مجاني — كود: EXPLORE5\n" +
+  "• شحن مجاني على الطلبات فوق 999 جنيه\n" +
+  "• اشتري 2 أو أكتر ووفر 10% — كود: SAVE10";
+
 function detectShippingQuestion(text) {
   const normalized = normalizeText(text);
   return ["شحن", "توصيل", "تشحن", "تشحنوا", "مصاريف الشحن", "كام يوم", "بتوصل امتي", "delivery", "shipping"].some(
@@ -330,6 +343,18 @@ async function chat(message) {
       success: true,
       message: "العفو 🤍 لو احتجتي أي حاجة تانية أنا هنا.",
       intent: "thanks",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  if (detectOffersQuestion(text)) {
+    return {
+      success: true,
+      message: OFFERS_REPLY,
+      intent: "offers",
       category: null,
       budget: null,
       count: 0,
