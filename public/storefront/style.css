@@ -1,0 +1,129 @@
+/* Lana Beauty — live theme overrides
+   This targets the ACTUAL classes used by the store's current live theme
+   (Tailwind-style utility classes, --skin-primary tokens, Jost font),
+   not the CLI-scaffolded ab-* theme. Upload this file via the
+   design-assets CSS uploader in admin. */
+
+/* Brand accent color — applies to buy/checkout buttons, cart badge, and any
+   element using the bg-skin-primary / text-skin-primary / border-skin-primary
+   utility classes across the live theme */
+.bg-skin-primary:not(.\!bg-white) {
+  background-color: #6C4452 !important;
+}
+.text-skin-primary {
+  color: #6C4452 !important;
+}
+.border-skin-primary {
+  border-color: #6C4452 !important;
+}
+
+/* Product price: brand-color the amount, keep the unit muted */
+#price.product_price,
+.product_price {
+  color: #6C4452 !important;
+}
+#price.product_price > span,
+.product_price > span {
+  color: rgba(108, 68, 82, 0.55) !important;
+}
+
+/* Product grid card: current price */
+.flex.items-center.gap-1.text-\[\#131316\] {
+  color: #6C4452 !important;
+}
+
+/* Product grid card: struck-through original price */
+del.font-thin.text-gray-600.text-base.flex.items-center.gap-1.ms-2 {
+  color: rgba(108, 68, 82, 0.45) !important;
+}
+
+/* Discount / sale badge on product grid cards */
+.bg-\[\#C4301C\] {
+  background-color: #6C4452 !important;
+}
+
+/* Product page: struck-through original price */
+p.text-\[\#61758A\].line-through {
+  color: rgba(108, 68, 82, 0.5) !important;
+}
+
+/* Checkout: contact info form section background */
+section.bg-\[\#F7F7FA\] {
+  background-color: #FBF6F2 !important;
+}
+
+/* Checkout: free-shipping progress bar track + fill */
+.bg-\[\#c5d2de\] {
+  background-color: #EFE1E5 !important;
+}
+.bg-\[\#c5d2de\] .bg-\[\#202223\] {
+  background-color: #6C4452 !important;
+}
+
+/* Product page: "Time Left For Discount" countdown */
+.border-\[\#E5E5EF\].shadow-\[0px_12px_40px_0px_\#7E8BA924\] {
+  border-color: #E8D9DD !important;
+}
+.border-\[\#E5E5EF\].shadow-\[0px_12px_40px_0px_\#7E8BA924\] > span.text-xl.font-bold.text-\[\#010101\] {
+  color: #6C4452 !important;
+}
+div[dir="ltr"] > span.text-2xl.font-bold.text-\[\#010101\] {
+  color: #6C4452 !important;
+}
+p.font-bold.text-\[\#010101\]:has(+ div[dir="ltr"]) {
+  color: #6C4452 !important;
+}
+
+/* Mobile side nav drawer: keep above the announcement bar's z-index: 9999
+   (exclude the dialog's own overlay/backdrop, which shares the id prefix) */
+div[role="dialog"]:not([data-cart="overlay"]),
+[id^="headlessui-dialog"]:not([id*="overlay"]),
+.relative.flex.w-full.max-w-xs.flex-col.overflow-y-auto.bg-white.pb-12.shadow-xl {
+  z-index: 2147483000 !important;
+}
+
+/* Mobile side nav drawer: fix wrong slide direction (site uses a
+   rightward transform class on a left-positioned drawer) */
+.relative.flex.w-full.max-w-xs.flex-col.overflow-y-auto.bg-white.pb-12.shadow-xl.translate-x-full {
+  transform: translateX(-100%) !important;
+}
+
+/* Footer: remove the large bottom gap */
+footer .max-w-7xl.mx-auto.px-4.pb-20 {
+  padding-bottom: 0 !important;
+}
+
+/* Payment strip: remove bottom gap (including the mobile "purple
+   extension" pseudo-element and its reserved margin). Doubled class
+   for extra specificity, since the strip's own <style> tag also
+   uses !important and may load after ours. */
+.lana-payment-strip.lana-payment-strip {
+  margin: 0 !important;
+  padding-bottom: 0 !important;
+}
+.lana-payment-strip.lana-payment-strip::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Custom pages (tracking, scent-finder): collapse the empty rich-text
+   content area so our injected form/quiz sits close to the heading */
+.content_container.page_content {
+  min-height: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+.content_container.page_content .ql-editor {
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove "Powered by Easyorders" wherever it appears */
+p:has(> a[href="https://www.easy-orders.net"]) {
+  display: none !important;
+}
+
+/* Hide footer newsletter signup block */
+.flex.flex-col.md\:flex-row.justify-center.gap-8.md\:gap-x-20.rounded-\[48px\].bg-skin-primary {
+  display: none !important;
+}

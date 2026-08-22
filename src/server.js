@@ -81,6 +81,11 @@ app.get("/admin/dashboard", (req, res) => {
 });
 app.use("/admin", express.static(path.join(__dirname, "../public/admin")));
 
+// Storefront CSS/JS overrides at a permanent URL — paste these into Easy
+// Orders' head-code box ONCE; from then on, editing the files here and
+// deploying updates them automatically, no re-upload/re-paste needed.
+app.use("/storefront", express.static(path.join(__dirname, "../public/storefront")));
+
 app.get("/health", (req, res) => {
   res.json({
     ok: true,
