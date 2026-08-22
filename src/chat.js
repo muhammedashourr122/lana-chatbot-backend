@@ -17,21 +17,132 @@ const SHIPPING_COSTS = {
   "السويس": 120, "سوهاج": 135, "قنا": 155, "الساحل الشمالي": 160,
 };
 
+// English display names for the same governorates, used only when
+// replying in English (the SHIPPING_COSTS keys stay Arabic since that's
+// what detectCity() matches against in the customer's message).
+const CITY_NAMES_EN = {
+  "المنيا": "Minya", "الاسكندرية": "Alexandria", "البحيرة": "Beheira", "الجيزة": "Giza",
+  "اسوان": "Aswan", "دمياط": "Damietta", "القليوبية": "Qalyubia", "بورسعيد": "Port Said",
+  "القاهرة": "Cairo", "الفيوم": "Fayoum", "البحر الاحمر": "Red Sea", "الغربية": "Gharbia",
+  "كفر الشيخ": "Kafr El Sheikh", "المنوفية": "Monufia", "جنوب سيناء": "South Sinai", "اسيوط": "Assiut",
+  "شمال سيناء": "North Sinai", "الاسمعيلية": "Ismailia", "مطروح": "Marsa Matruh", "الاقصر": "Luxor",
+  "بني سويف": "Beni Suef", "الوادي الجديد": "New Valley", "الدقهلية": "Dakahlia", "الشرقية": "Sharqia",
+  "السويس": "Suez", "سوهاج": "Sohag", "قنا": "Qena", "الساحل الشمالي": "North Coast",
+};
+
 const FAR_GOVERNORATES = [
   "اسوان", "الاقصر", "قنا", "البحر الاحمر", "مطروح", "شمال سيناء", "جنوب سيناء", "الوادي الجديد",
 ];
 
-const SHIPPING_INFO_REPLY =
-  "بنجهز الطلب في نفس يوم تأكيده، وشركة الشحن بتستلمه من تاني يوم.\n" +
-  "التوصيل بياخد حوالي يومين لمعظم المحافظات، أما المحافظات البعيدة (اسوان، الأقصر، قنا، البحر الأحمر، مطروح، شمال وجنوب سيناء، الوادي الجديد) فبتاخد من 3 لـ 5 أيام.\n" +
-  "مصاريف الشحن بتختلف حسب المحافظة — قوليلي اسم محافظتك وأقولك المصاريف بالظبط.\n" +
-  "ملحوظة: في فترات الأوفرز ممكن يتأخر التوصيل شوية بسبب زيادة الطلبات، وميفيش تعديل على الطلب بعد تأكيده.";
+const MESSAGES = {
+  emptyInput: {
+    ar: "قوللي محتاج تعرف ايه عن منتجات Lana's Beauty.",
+    en: "Tell me what you'd like to know about Lana's Beauty products.",
+  },
+  greeting: {
+    ar: "أهلاً بحضرتك في Lana's Beauty 🤍 قوللي محتاج تعرف ايه، أو دور على منتج معين.",
+    en: "Welcome to Lana's Beauty 🤍 Tell me what you're looking for, or ask about a specific product.",
+  },
+  thanks: {
+    ar: "العفو 🤍 لو محتاج أي حاجة تانية أنا هنا.",
+    en: "You're welcome 🤍 I'm here if you need anything else.",
+  },
+  askPhone: {
+    ar: "قوللي رقم الموبايل اللي اتعمل بيه الطلب وهجيبلك حالته.",
+    en: "Please share the mobile number the order was placed with, and I'll check its status.",
+  },
+  cantCheckNow: {
+    ar: "مش قادر أتأكد من حالة الطلب دلوقتي، حاول تاني بعد شوية.",
+    en: "I can't check the order status right now — please try again shortly.",
+  },
+  noOrdersFound: {
+    ar: "مش لاقي أي طلب مسجل بالرقم ده. اتأكد إن الرقم صحيح، أو لو الطلب لسه جديد ممكن ياخد شوية لغاية ما يظهر.",
+    en: "I couldn't find any order under this number. Please double check the number, or if the order was just placed it may take a little while to show up.",
+  },
+  cantFetchOrderNow: {
+    ar: "مش قادر أجيب تفاصيل الطلب دلوقتي، حاول تاني بعد شوية.",
+    en: "I can't fetch the order details right now — please try again shortly.",
+  },
+  offers: {
+    ar: "دلوقتي عندنا:\n" +
+      "• Buy 3 Get 2 + شحن مجاني — كود: EXPLORE5\n" +
+      "• شحن مجاني على الطلبات فوق 999 جنيه\n" +
+      "• اشتري 2 أو أكتر ووفر 10% — كود: SAVE10",
+    en: "Here's what's currently active:\n" +
+      "• Buy 3 Get 2 + Free Shipping — code: EXPLORE5\n" +
+      "• Free shipping on orders over 999 EGP\n" +
+      "• Buy 2 or more and save 10% — code: SAVE10",
+  },
+  shippingInfo: {
+    ar: "بنجهز الطلب في نفس يوم تأكيده، وشركة الشحن بتستلمه من تاني يوم.\n" +
+      "التوصيل بياخد حوالي يومين لمعظم المحافظات، أما المحافظات البعيدة (اسوان، الأقصر، قنا، البحر الأحمر، مطروح، شمال وجنوب سيناء، الوادي الجديد) فبتاخد من 3 لـ 5 أيام.\n" +
+      "مصاريف الشحن بتختلف حسب المحافظة — قوللي اسم محافظتك وأقولك المصاريف بالظبط.\n" +
+      "ملحوظة: في فترات الأوفرز ممكن يتأخر التوصيل شوية بسبب زيادة الطلبات، وميفيش تعديل على الطلب بعد تأكيده.",
+    en: "Orders are prepared the same day they're confirmed, and the courier picks them up the next day.\n" +
+      "Delivery takes about 2 days for most governorates, while farther ones (Aswan, Luxor, Qena, Red Sea, Marsa Matruh, North/South Sinai, New Valley) take 3 to 5 days.\n" +
+      "Shipping cost varies by governorate — tell me yours and I'll give you the exact fee.\n" +
+      "Note: during sale periods, delivery may be slightly delayed due to higher order volume, and orders can't be modified after confirmation.",
+  },
+  returnPolicy: {
+    ar: "لو وصل منتج تالف أو غلط، بلغنا خلال 24 ساعة من استلام الطلب وهنتحمل مصاريف الاسترجاع أو الاستبدال بالكامل.\n" +
+      "لأي استرجاع عادي: المنتج لازم يكون في حالته الأصلية، مقفول، ومتفتحش، وخلال 14 يوم من الاستلام. المنتجات المفتوحة مينفعش ترجع خالص.\n" +
+      "مهم جدا: معطر الجسم، ومرطب/لوشن الجسم، والشامبو، والبلسم، ومنتجات النظافة الشخصية عموما مينفعش ترجع أو تتستبدل لأسباب صحية، إلا لو كان فيه عيب أو غلط في الطلب.\n" +
+      "بخصوص الدفع: بنقبل كاش، إنستاباي، وكاشير (تقسيط/محفظة/كارت). الفلوس بترجع بنفس طريقة الدفع اللي اتم بيها الشراء، ولو الدفع كان كاش بترجع على محفظة إلكترونية أو إنستاباي أو حساب بنكي. استرداد مدفوعات كاشير بياخد حوالي 7 أيام.",
+    en: "If you receive a damaged or incorrect item, let us know within 24 hours of receiving it and we'll cover the full return/exchange shipping cost.\n" +
+      "For a regular return: the product must be in its original condition, sealed, and unused, within 14 days of receipt. Opened products can't be returned under any circumstances.\n" +
+      "Important: body mist, body lotion, shampoo, and conditioner — hygiene products in general — can't be returned or exchanged for health reasons, unless the item is defective or incorrect.\n" +
+      "On payment: we accept cash on delivery, Instapay, and Kashier (installments/wallet/card). Refunds go back via the original payment method; cash payments are refunded via e-wallet, Instapay, or bank account. Kashier refunds take about 7 days to process.",
+  },
+  noMatchForHer: {
+    ar: "للأسف مفيش منتجات For Her متاحة حاليا. تحب أشوفلك Unisex؟",
+    en: "Sorry, no For Her products are available right now. Want me to check Unisex instead?",
+  },
+  noMatchForHim: {
+    ar: "للأسف مفيش منتجات For Him متاحة حاليا. تحب أشوفلك Unisex؟",
+    en: "Sorry, no For Him products are available right now. Want me to check Unisex instead?",
+  },
+  noMatchUnisex: {
+    ar: "للأسف مفيش منتجات Unisex متاحة حاليا.",
+    en: "Sorry, no Unisex products are available right now.",
+  },
+  noMatchGeneric: {
+    ar: "مش لاقي حاجة مطابقة للطلب حاليا. جرب تقول مثلا: منتج للبنات، للرجالة، أو Unisex.",
+    en: "I couldn't find anything matching that. Try something like: products for her, for him, or Unisex.",
+  },
+  foundForHer: {
+    ar: "أكيد ❤️ دي المنتجات المتاحة من Lana's Beauty للـ For Her:",
+    en: "Sure ❤️ Here are the available For Her products from Lana's Beauty:",
+  },
+  foundForHim: {
+    ar: "أكيد 👌 دي المنتجات المتاحة من Lana's Beauty للـ For Him:",
+    en: "Sure 👌 Here are the available For Him products from Lana's Beauty:",
+  },
+  foundUnisex: {
+    ar: "أكيد ✨ دي المنتجات الـ Unisex المتاحة حاليا:",
+    en: "Sure ✨ Here are the available Unisex products:",
+  },
+  foundAvailable: {
+    ar: "دي المنتجات المتاحة حاليا من Lana's Beauty:",
+    en: "Here are the products currently available from Lana's Beauty:",
+  },
+  foundRecommend: {
+    ar: "أكيد ❤️ دي شوية اختيارات ممكن تناسب:",
+    en: "Sure ❤️ Here are a few picks that might work well:",
+  },
+  foundGeneric: {
+    ar: "لقيت المنتجات دي من Lana's Beauty:",
+    en: "Here's what I found from Lana's Beauty:",
+  },
+};
 
-const RETURN_POLICY_REPLY =
-  "لو وصلك منتج تالف أو غلط، ابلغينا خلال 24 ساعة من استلام الطلب وهنتحمل مصاريف الاسترجاع أو الاستبدال بالكامل.\n" +
-  "لأي استرجاع عادي: المنتج لازم يكون في حالته الأصلية، مقفول، ومتفتحش، وخلال 14 يوم من الاستلام. المنتجات المفتوحة مينفعش ترجع خالص.\n" +
-  "مهم جدا: معطر الجسم، ومرطب/لوشن الجسم، والشامبو، والبلسم، ومنتجات النظافة الشخصية عموما مينفعش ترجع أو تتستبدل لأسباب صحية، إلا لو كان فيه عيب أو غلط في الطلب.\n" +
-  "بخصوص الدفع: بنقبل كاش، إنستاباي، وكاشير (تقسيط/محفظة/كارت). الفلوس بترجع بنفس طريقة الدفع اللي اتم بيها الشراء، ولو دفعتي كاش بترجع على محفظة إلكترونية أو إنستاباي أو حساب بنكي. استرداد مدفوعات كاشير بياخد حوالي 7 أيام.";
+function detectLanguage(rawMessage) {
+  // Arabic script present anywhere -> Arabic; otherwise, if it has Latin
+  // letters -> English. Defaults to Arabic (the storefront's primary
+  // market) when the message is ambiguous (e.g. just digits/emoji).
+  if (/[؀-ۿ]/.test(rawMessage)) return "ar";
+  if (/[a-zA-Z]/.test(rawMessage)) return "en";
+  return "ar";
+}
 
 function normalizeText(text = "") {
   return String(text)
@@ -125,6 +236,9 @@ function detectCity(text) {
     const cityNorm = normalizeText(city);
     const core = cityNorm.startsWith("ال") ? cityNorm.slice(2) : cityNorm;
     if (normalized.includes(core)) return city;
+
+    const englishName = CITY_NAMES_EN[city];
+    if (englishName && normalized.includes(englishName.toLowerCase())) return city;
   }
   return null;
 }
@@ -152,12 +266,6 @@ function detectOffersQuestion(text) {
     (w) => normalized.includes(w)
   );
 }
-
-const OFFERS_REPLY =
-  "دلوقتي عندنا:\n" +
-  "• Buy 3 Get 2 + شحن مجاني — كود: EXPLORE5\n" +
-  "• شحن مجاني على الطلبات فوق 999 جنيه\n" +
-  "• اشتري 2 أو أكتر ووفر 10% — كود: SAVE10";
 
 function detectShippingQuestion(text) {
   const normalized = normalizeText(text);
@@ -256,16 +364,16 @@ function detectBudget(text) {
     : null;
 }
 
-async function getOrderStatusReply(phone) {
+async function getOrderStatusReply(phone, lang) {
   let orderIds;
   try {
     orderIds = await getOrderIdsForPhone(phone);
   } catch (e) {
-    return "مش قادر أتأكد من حالة الطلب دلوقتي، حاولي تاني بعد شوية.";
+    return MESSAGES.cantCheckNow[lang];
   }
 
   if (orderIds.length === 0) {
-    return "مش لاقي أي طلب مسجل بالرقم ده. اتأكدي إن الرقم صحيح، أو لو الطلب لسه جديد ممكن ياخد شوية لغاية ما يظهر.";
+    return MESSAGES.noOrdersFound[lang];
   }
 
   const orders = (
@@ -281,31 +389,38 @@ async function getOrderStatusReply(phone) {
   ).filter(Boolean);
 
   if (orders.length === 0) {
-    return "مش قادر أجيب تفاصيل الطلب دلوقتي، حاولي تاني بعد شوية.";
+    return MESSAGES.cantFetchOrderNow[lang];
   }
 
   orders.sort((a, b) => new Date(b.order.created_at) - new Date(a.order.created_at));
   const latest = orders[0];
   const latestEvent = latest.events[latest.events.length - 1];
 
-  let reply = `طلبك رقم #${latest.order.short_id} حالته دلوقتي: ${latest.order.status}.`;
+  let reply = lang === "en"
+    ? `Order #${latest.order.short_id} is currently: ${latest.order.status}.`
+    : `طلب رقم #${latest.order.short_id} حالته دلوقتي: ${latest.order.status}.`;
+
   if (latestEvent) {
-    reply += ` آخر تحديث من شركة الشحن: ${latestEvent.stateName}.`;
+    reply += lang === "en"
+      ? ` Latest courier update: ${latestEvent.stateName}.`
+      : ` آخر تحديث من شركة الشحن: ${latestEvent.stateName}.`;
   }
   if (orders.length > 1) {
-    reply += ` (عندك ${orders.length} طلبات مسجلة بالرقم ده — ده أحدثهم.)`;
+    reply += lang === "en"
+      ? ` (There are ${orders.length} orders under this number — this is the most recent.)`
+      : ` (في ${orders.length} طلبات مسجلة بالرقم ده — ده أحدثهم.)`;
   }
   return reply;
 }
 
 async function chat(message) {
+  const lang = detectLanguage(message);
   const text = normalizeText(message);
 
   if (!text) {
     return {
       success: false,
-      message:
-        "اكتبلي عايز تعرف ايه عن منتجات Lana's Beauty.",
+      message: MESSAGES.emptyInput[lang],
       intent: null,
       category: null,
       budget: null,
@@ -319,7 +434,7 @@ async function chat(message) {
   // already-normalized text so Arabic-Indic digits are recognized too.
   const phone = detectPhone(text);
   if (phone) {
-    const reply = await getOrderStatusReply(phone);
+    const reply = await getOrderStatusReply(phone, lang);
     return {
       success: true,
       message: reply,
@@ -336,7 +451,7 @@ async function chat(message) {
   if (detectOrderStatusQuestion(text)) {
     return {
       success: true,
-      message: "قوليلي رقم الموبايل اللي طلبتي بيه وأنا هجيبلك حالة الطلب.",
+      message: MESSAGES.askPhone[lang],
       intent: "order_status",
       category: null,
       budget: null,
@@ -348,7 +463,7 @@ async function chat(message) {
   if (detectGreeting(text)) {
     return {
       success: true,
-      message: "أهلا بيكي في Lana's Beauty 🤍 قوليلي عايزة تعرفي ايه، أو دوري على منتج معين.",
+      message: MESSAGES.greeting[lang],
       intent: "greeting",
       category: null,
       budget: null,
@@ -360,7 +475,7 @@ async function chat(message) {
   if (detectThanks(text)) {
     return {
       success: true,
-      message: "العفو 🤍 لو احتجتي أي حاجة تانية أنا هنا.",
+      message: MESSAGES.thanks[lang],
       intent: "thanks",
       category: null,
       budget: null,
@@ -372,7 +487,7 @@ async function chat(message) {
   if (detectOffersQuestion(text)) {
     return {
       success: true,
-      message: OFFERS_REPLY,
+      message: MESSAGES.offers[lang],
       intent: "offers",
       category: null,
       budget: null,
@@ -383,9 +498,13 @@ async function chat(message) {
 
   if (detectShippingQuestion(text)) {
     const city = detectCity(text);
-    let reply = SHIPPING_INFO_REPLY;
+    let reply = MESSAGES.shippingInfo[lang];
     if (city && SHIPPING_COSTS[city]) {
-      reply = `مصاريف الشحن لـ ${city}: ${SHIPPING_COSTS[city]} جنيه.\n\n` + reply;
+      const cityLabel = lang === "en" ? CITY_NAMES_EN[city] : city;
+      const costLine = lang === "en"
+        ? `Shipping cost to ${cityLabel}: ${SHIPPING_COSTS[city]} EGP.\n\n`
+        : `مصاريف الشحن لـ ${city}: ${SHIPPING_COSTS[city]} جنيه.\n\n`;
+      reply = costLine + reply;
     }
     return {
       success: true,
@@ -407,12 +526,17 @@ async function chat(message) {
   // text again, since repeating it every time would get repetitive.
   const bareCity = detectCity(text);
   if (bareCity && text.split(/\s+/).filter(Boolean).length <= 4) {
+    const cityLabel = lang === "en" ? CITY_NAMES_EN[bareCity] : bareCity;
+    const isFar = FAR_GOVERNORATES.includes(bareCity);
+    const message = lang === "en"
+      ? `Shipping cost to ${cityLabel}: ${SHIPPING_COSTS[bareCity]} EGP. ` +
+        (isFar ? "Delivery takes 3 to 5 days." : "Delivery takes about 2 days.")
+      : `مصاريف الشحن لـ ${bareCity}: ${SHIPPING_COSTS[bareCity]} جنيه. ` +
+        (isFar ? "التوصيل بياخد من 3 لـ 5 أيام." : "التوصيل بياخد حوالي يومين.");
+
     return {
       success: true,
-      message: `مصاريف الشحن لـ ${bareCity}: ${SHIPPING_COSTS[bareCity]} جنيه. ` +
-        (FAR_GOVERNORATES.includes(bareCity)
-          ? "التوصيل بياخد من 3 لـ 5 أيام."
-          : "التوصيل بياخد حوالي يومين."),
+      message,
       intent: "shipping",
       category: null,
       budget: null,
@@ -424,7 +548,7 @@ async function chat(message) {
   if (detectReturnQuestion(text)) {
     return {
       success: true,
-      message: RETURN_POLICY_REPLY,
+      message: MESSAGES.returnPolicy[lang],
       intent: "return_policy",
       category: null,
       budget: null,
@@ -543,36 +667,26 @@ if (!category && intent === "search") {
 
   if (products.length === 0) {
     if (category === "for-her") {
-      reply =
-        "للأسف مفيش منتجات For Her متاحة حاليا. تحب أشوفلك Unisex؟";
+      reply = MESSAGES.noMatchForHer[lang];
     } else if (category === "for-him") {
-      reply =
-        "للأسف مفيش منتجات For Him متاحة حاليا. تحب أشوفلك Unisex؟";
+      reply = MESSAGES.noMatchForHim[lang];
     } else if (category === "unisex") {
-      reply =
-        "للأسف مفيش منتجات Unisex متاحة حاليا.";
+      reply = MESSAGES.noMatchUnisex[lang];
     } else {
-      reply =
-        "مش لاقي حاجة مطابقة لطلبك حاليا. جرب تقولي مثلا: عايز حاجة للبنات، للرجالة، أو Unisex.";
+      reply = MESSAGES.noMatchGeneric[lang];
     }
   } else if (category === "for-her") {
-    reply =
-      "أكيد ❤️ دي المنتجات المتاحة من Lana's Beauty للـ For Her:";
+    reply = MESSAGES.foundForHer[lang];
   } else if (category === "for-him") {
-    reply =
-      "أكيد 👌 دي المنتجات المتاحة من Lana's Beauty للـ For Him:";
+    reply = MESSAGES.foundForHim[lang];
   } else if (category === "unisex") {
-    reply =
-      "أكيد ✨ دي المنتجات الـ Unisex المتاحة حاليا:";
+    reply = MESSAGES.foundUnisex[lang];
   } else if (intent === "availability") {
-    reply =
-      "دي المنتجات المتاحة حاليا من Lana's Beauty:";
+    reply = MESSAGES.foundAvailable[lang];
   } else if (intent === "recommend") {
-    reply =
-      "أكيد ❤️ دي شوية اختيارات ممكن تناسبك:";
+    reply = MESSAGES.foundRecommend[lang];
   } else {
-    reply =
-      "لقيتلك المنتجات دي من Lana's Beauty:";
+    reply = MESSAGES.foundGeneric[lang];
   }
 
   return {
