@@ -5,7 +5,7 @@
 <title>Lana Beauty — Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin/dashboard.css">
 <script>
   (function () {
@@ -15,55 +15,83 @@
 </script>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-inner">
-    <div>
-      <h1>Lana Beauty Dashboard</h1>
-      <p class="sub">Business health, delivery performance, and orders <span id="refresh-note"></span></p>
+
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-mark">L</span>
+      <span class="brand-name">Lana Beauty</span>
     </div>
-    <div class="search-row">
-      <input type="text" id="search-input" placeholder="Order number or phone number" />
-      <button id="search-btn">Search</button>
+
+    <nav class="sidebar-nav" id="dash-tabs">
+      <button class="tab-btn nav-item active" data-tab="overview">
+        <span class="nav-icon">◆</span> Overview
+      </button>
+      <button class="tab-btn nav-item" data-tab="attention">
+        <span class="nav-icon">▲</span> Needs Attention<span id="attention-count-badge"></span>
+      </button>
+      <button class="tab-btn nav-item" data-tab="orders">
+        <span class="nav-icon">▤</span> Orders
+      </button>
+      <button class="tab-btn nav-item" data-tab="settings">
+        <span class="nav-icon">⚙</span> Settings
+      </button>
+      <button class="tab-btn nav-item" data-tab="users" id="tab-btn-users" style="display:none;">
+        <span class="nav-icon">◍</span> Users & Roles
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="/admin/homepage-builder" id="homepage-builder-link" style="display:none;">
+        <span class="nav-icon">✎</span> Homepage Builder
+      </a>
     </div>
-    <a href="/admin/homepage-builder" id="homepage-builder-link" style="display:none;">Homepage Builder</a>
-    <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
-    <div id="user-menu" style="display:flex;align-items:center;gap:10px;"></div>
-  </div>
-</div>
+  </aside>
 
-<div class="page">
-  <div class="tabs" id="dash-tabs">
-    <button class="tab-btn active" data-tab="overview">Overview</button>
-    <button class="tab-btn" data-tab="attention">Needs Attention<span id="attention-count-badge"></span></button>
-    <button class="tab-btn" data-tab="orders">Orders</button>
-    <button class="tab-btn" data-tab="settings">Settings</button>
-    <button class="tab-btn" data-tab="users" id="tab-btn-users" style="display:none;">Users & Roles</button>
+  <div class="main-col">
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div>
+          <p class="sub">Business health, delivery performance, and orders <span id="refresh-note"></span></p>
+        </div>
+        <div class="search-row">
+          <input type="text" id="search-input" placeholder="Order number or phone number" />
+          <button id="search-btn">Search</button>
+        </div>
+        <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <div id="user-menu" style="display:flex;align-items:center;gap:10px;"></div>
+      </div>
+    </div>
+
+    <div class="page">
+      <div id="search-results"></div>
+      <div id="customer-panel" style="display:none;margin-bottom:20px;"></div>
+
+      <div class="tab-panel" data-tab-panel="overview">
+        <div id="overview-root"><div class="skeleton"></div></div>
+        <div id="governorates-root"></div>
+        <div id="top-products-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="attention" style="display:none;">
+        <div id="attention-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="orders" style="display:none;">
+        <div id="orders-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="settings" style="display:none;">
+        <div id="settings-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="users" style="display:none;">
+        <div id="users-root"></div>
+      </div>
+    </div>
   </div>
 
-  <div id="search-results"></div>
-  <div id="customer-panel" style="display:none;margin-bottom:20px;"></div>
-
-  <div class="tab-panel" data-tab-panel="overview">
-    <div id="overview-root"><div class="skeleton"></div></div>
-    <div id="governorates-root"></div>
-    <div id="top-products-root"></div>
-  </div>
-
-  <div class="tab-panel" data-tab-panel="attention" style="display:none;">
-    <div id="attention-root"></div>
-  </div>
-
-  <div class="tab-panel" data-tab-panel="orders" style="display:none;">
-    <div id="orders-root"></div>
-  </div>
-
-  <div class="tab-panel" data-tab-panel="settings" style="display:none;">
-    <div id="settings-root"></div>
-  </div>
-
-  <div class="tab-panel" data-tab-panel="users" style="display:none;">
-    <div id="users-root"></div>
-  </div>
 </div>
 
 <script type="module" src="/admin/dashboard.js"></script>
