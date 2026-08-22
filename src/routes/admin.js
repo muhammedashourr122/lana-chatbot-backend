@@ -540,7 +540,9 @@ router.delete("/users/:username", requireOwner, async (req, res) => {
 router.get("/settings", requireOwner, async (req, res) => {
   try {
     const settings = await usersStore.getSettings();
-    res.json({ success: true, settings });
+    // Never send the raw key to the browser — just whether one is set.
+    const { bostaApiKey, ...rest } = settings;
+    res.json({ success: true, settings: { ...rest, bostaApiKeySet: Boolean(bostaApiKey) } });
   } catch (error) {
     console.error("Get settings error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load settings" });
@@ -549,7 +551,7 @@ router.get("/settings", requireOwner, async (req, res) => {
 
 router.post("/settings", requireOwner, async (req, res) => {
   try {
-    const { staleHours, pendingStaleHours, silentDispatchHours, lowStockThreshold } = req.body || {};
+    const { staleHours, pendingStaleHours, silentDispatchHours, lowStockThreshold, bostaApiKey } = req.body || {};
     const values = { staleHours, pendingStaleHours, silentDispatchHours, lowStockThreshold };
 
     for (const [k, v] of Object.entries(values)) {
@@ -560,9 +562,15 @@ router.post("/settings", requireOwner, async (req, res) => {
       values[k] = n;
     }
 
+    // Blank/omitted means "leave the current key alone" — the GET route
+    // never sends the real key back, so an empty field can't mean "clear it".
+    const current = await usersStore.getSettings();
+    values.bostaApiKey = typeof bostaApiKey === "string" && bostaApiKey.trim() ? bostaApiKey.trim() : current.bostaApiKey;
+
     const saved = await usersStore.saveSettings(values);
     adminCache.invalidate("admin-data");
-    res.json({ success: true, settings: saved });
+    const { bostaApiKey: _omit, ...rest } = saved;
+    res.json({ success: true, settings: { ...rest, bostaApiKeySet: Boolean(saved.bostaApiKey) } });
   } catch (error) {
     console.error("Save settings error:", error.message);
     res.status(500).json({ success: false, error: "Unable to save settings" });

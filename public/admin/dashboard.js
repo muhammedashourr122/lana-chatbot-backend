@@ -543,6 +543,10 @@ function renderSettings() {
         '<div><span>Silent Dispatch (hours)</span><input type="number" id="set-silentDispatchHours" value="' + s.silentDispatchHours + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
         '<div><span>Low Stock Threshold</span><input type="number" id="set-lowStockThreshold" value="' + s.lowStockThreshold + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
         "</div>" +
+        '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Bosta API Key <span class="hint">— used to print AWBs; ' + (s.bostaApiKeySet ? "a key is currently set" : "no key set yet") + '</span></h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>New key (leave blank to keep current)</span><input type="password" id="set-bostaApiKey" placeholder="' + (s.bostaApiKeySet ? "•••••••••••••••• (unchanged)" : "paste Bosta API key") + '" autocomplete="off" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;"></div>' +
+        "</div>" +
         '<button id="save-settings-btn" class="btn">Save Settings</button> <span id="settings-msg"></span></div>';
 
       document.getElementById("save-settings-btn").addEventListener("click", () => {
@@ -552,6 +556,7 @@ function renderSettings() {
           pendingStaleHours: document.getElementById("set-pendingStaleHours").value,
           silentDispatchHours: document.getElementById("set-silentDispatchHours").value,
           lowStockThreshold: document.getElementById("set-lowStockThreshold").value,
+          bostaApiKey: document.getElementById("set-bostaApiKey").value,
         };
         msg.textContent = "Saving…";
         fetch("/api/admin/settings", {
@@ -562,8 +567,9 @@ function renderSettings() {
           .then((res) => res.json())
           .then((result) => {
             if (result.success) {
-              msg.textContent = "Saved.";
-              msg.style.color = "#2e7d32";
+              renderSettings();
+              document.getElementById("settings-msg").textContent = "Saved.";
+              document.getElementById("settings-msg").style.color = "#2e7d32";
               loadAll();
             } else {
               msg.textContent = result.error || "Failed to save.";

@@ -1,11 +1,16 @@
 const axios = require("axios");
+const { getSettings } = require("./users-store");
 
 const BASE_URL = "https://app.bosta.co/api/v2";
 
-function client() {
-  const apiKey = process.env.BOSTA_API_KEY;
+// The key can be rotated from the dashboard's Settings tab (stored in
+// Redis) without a redeploy; the env var is only the initial/fallback
+// value for when no override has been saved yet.
+async function client() {
+  const settings = await getSettings();
+  const apiKey = settings.bostaApiKey || process.env.BOSTA_API_KEY;
   if (!apiKey) {
-    throw new Error("BOSTA_API_KEY is not configured");
+    throw new Error("Bosta API key is not configured");
   }
   return axios.create({
     baseURL: BASE_URL,
@@ -17,7 +22,8 @@ function client() {
 // Bosta's AWB endpoint takes its own internal delivery _id, not the
 // human-readable tracking number — this looks that id up first.
 async function getDeliveryByTrackingNumber(trackingNumber) {
-  const res = await client().get(`/deliveries/business/${encodeURIComponent(trackingNumber)}`);
+  const http = await client();
+  const res = await http.get(`/deliveries/business/${encodeURIComponent(trackingNumber)}`);
   return res.data?.data;
 }
 
@@ -29,7 +35,8 @@ async function getAwbPdfByTrackingNumber(trackingNumber) {
     throw new Error("Delivery not found on Bosta");
   }
 
-  const res = await client().get("/deliveries/business/awb", {
+  const http2 = await client();
+  const res = await http2.get("/deliveries/business/awb", {
     params: { lang: "ar", blockUnAutoAssigned: true, ids: delivery._id },
   });
 

@@ -130,6 +130,7 @@ const DEFAULT_SETTINGS = {
   pendingStaleHours: 24,
   silentDispatchHours: 24,
   lowStockThreshold: 5,
+  bostaApiKey: "",
 };
 
 async function getSettings() {
