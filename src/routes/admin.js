@@ -410,6 +410,18 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       return res.status(404).json({ success: false, error: "Delivery not found on Bosta" });
     }
 
+    // Bosta's audit log has an entry per field changed on the delivery —
+    // most are noise (address edits, etc). Only state-transition entries
+    // are useful here: what changed, when, and who/what changed it.
+    const stateLog = (delivery.log || [])
+      .filter((entry) => entry.actionsList?.state_value)
+      .map((entry) => ({
+        from: entry.actionsList.state_value.before,
+        to: entry.actionsList.state_value.after,
+        time: entry.time,
+        by: entry.takenBy?.userName || null,
+      }));
+
     res.json({
       success: true,
       state: delivery.state,
@@ -417,6 +429,7 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       cod: isModerator(req) ? undefined : delivery.cod,
       numberOfAttempts: delivery.numberOfAttempts,
       isDelayed: delivery.isDelayed,
+      stateLog,
     });
   } catch (error) {
     console.error("Bosta live fetch error:", error.response?.data || error.message);

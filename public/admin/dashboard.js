@@ -439,11 +439,24 @@ function renderBostaLive(orderId, result) {
     })
     .join("");
 
+  const stateLogHtml = (result.stateLog || [])
+    .map((entry) => {
+      const when = entry.time ? new Date(entry.time).toLocaleString() : "";
+      const who = entry.by ? esc(entry.by) : "System";
+      return "<li>" + esc(entry.from || "—") + " → <strong>" + esc(entry.to || "—") + "</strong> — " + esc(when) + " (" + who + ")</li>";
+    })
+    .join("");
+
   el.innerHTML =
     '<div style="margin-bottom:6px;"><strong>Live state:</strong> ' + esc(result.state?.value || "—") + "</div>" +
     (result.cod != null ? '<div style="margin-bottom:6px;"><strong>COD amount:</strong> ' + money(result.cod) + "</div>" : "") +
     (result.numberOfAttempts != null ? '<div style="margin-bottom:6px;"><strong>Delivery attempts:</strong> ' + result.numberOfAttempts + "</div>" : "") +
-    '<ul style="margin:6px 0 0;padding-left:18px;">' + timelineHtml + "</ul>";
+    '<div style="margin:8px 0 2px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Timeline</div>' +
+    '<ul style="margin:0;padding-left:18px;">' + timelineHtml + "</ul>" +
+    (stateLogHtml
+      ? '<div style="margin:8px 0 2px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Full State History (Bosta audit log)</div>' +
+        '<ul style="margin:0;padding-left:18px;">' + stateLogHtml + "</ul>"
+      : "");
 }
 
 function wireOrdersControls(data) {
