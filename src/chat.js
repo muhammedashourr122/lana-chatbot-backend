@@ -137,11 +137,20 @@ const MESSAGES = {
 
 function detectLanguage(rawMessage) {
   // Arabic script present anywhere -> Arabic; otherwise, if it has Latin
-  // letters -> English. Defaults to Arabic (the storefront's primary
-  // market) when the message is ambiguous (e.g. just digits/emoji).
+  // letters -> English. A message with neither (e.g. just a phone
+  // number) carries no language signal at all — since there's no
+  // conversation history to fall back on, "both" answers in both
+  // languages rather than silently guessing (and possibly answering in
+  // the wrong language mid-conversation, e.g. right after an English
+  // exchange).
   if (/[؀-ۿ]/.test(rawMessage)) return "ar";
   if (/[a-zA-Z]/.test(rawMessage)) return "en";
-  return "ar";
+  return "both";
+}
+
+function pick(entry, lang) {
+  if (lang === "both") return entry.en + "\n\n" + entry.ar;
+  return entry[lang];
 }
 
 function normalizeText(text = "") {
@@ -369,11 +378,11 @@ async function getOrderStatusReply(phone, lang) {
   try {
     orderIds = await getOrderIdsForPhone(phone);
   } catch (e) {
-    return MESSAGES.cantCheckNow[lang];
+    return pick(MESSAGES.cantCheckNow, lang);
   }
 
   if (orderIds.length === 0) {
-    return MESSAGES.noOrdersFound[lang];
+    return pick(MESSAGES.noOrdersFound, lang);
   }
 
   const orders = (
@@ -389,28 +398,25 @@ async function getOrderStatusReply(phone, lang) {
   ).filter(Boolean);
 
   if (orders.length === 0) {
-    return MESSAGES.cantFetchOrderNow[lang];
+    return pick(MESSAGES.cantFetchOrderNow, lang);
   }
 
   orders.sort((a, b) => new Date(b.order.created_at) - new Date(a.order.created_at));
   const latest = orders[0];
   const latestEvent = latest.events[latest.events.length - 1];
 
-  let reply = lang === "en"
-    ? `Order #${latest.order.short_id} is currently: ${latest.order.status}.`
-    : `طلب رقم #${latest.order.short_id} حالته دلوقتي: ${latest.order.status}.`;
+  let en = `Order #${latest.order.short_id} is currently: ${latest.order.status}.`;
+  let ar = `طلب رقم #${latest.order.short_id} حالته دلوقتي: ${latest.order.status}.`;
 
   if (latestEvent) {
-    reply += lang === "en"
-      ? ` Latest courier update: ${latestEvent.stateName}.`
-      : ` آخر تحديث من شركة الشحن: ${latestEvent.stateName}.`;
+    en += ` Latest courier update: ${latestEvent.stateName}.`;
+    ar += ` آخر تحديث من شركة الشحن: ${latestEvent.stateName}.`;
   }
   if (orders.length > 1) {
-    reply += lang === "en"
-      ? ` (There are ${orders.length} orders under this number — this is the most recent.)`
-      : ` (في ${orders.length} طلبات مسجلة بالرقم ده — ده أحدثهم.)`;
+    en += ` (There are ${orders.length} orders under this number — this is the most recent.)`;
+    ar += ` (في ${orders.length} طلبات مسجلة بالرقم ده — ده أحدثهم.)`;
   }
-  return reply;
+  return pick({ en, ar }, lang);
 }
 
 async function chat(message) {
@@ -420,7 +426,7 @@ async function chat(message) {
   if (!text) {
     return {
       success: false,
-      message: MESSAGES.emptyInput[lang],
+      message: pick(MESSAGES.emptyInput, lang),
       intent: null,
       category: null,
       budget: null,
@@ -451,7 +457,7 @@ async function chat(message) {
   if (detectOrderStatusQuestion(text)) {
     return {
       success: true,
-      message: MESSAGES.askPhone[lang],
+      message: pick(MESSAGES.askPhone, lang),
       intent: "order_status",
       category: null,
       budget: null,
@@ -463,7 +469,7 @@ async function chat(message) {
   if (detectGreeting(text)) {
     return {
       success: true,
-      message: MESSAGES.greeting[lang],
+      message: pick(MESSAGES.greeting, lang),
       intent: "greeting",
       category: null,
       budget: null,
@@ -475,7 +481,7 @@ async function chat(message) {
   if (detectThanks(text)) {
     return {
       success: true,
-      message: MESSAGES.thanks[lang],
+      message: pick(MESSAGES.thanks, lang),
       intent: "thanks",
       category: null,
       budget: null,
@@ -487,7 +493,7 @@ async function chat(message) {
   if (detectOffersQuestion(text)) {
     return {
       success: true,
-      message: MESSAGES.offers[lang],
+      message: pick(MESSAGES.offers, lang),
       intent: "offers",
       category: null,
       budget: null,
@@ -498,7 +504,7 @@ async function chat(message) {
 
   if (detectShippingQuestion(text)) {
     const city = detectCity(text);
-    let reply = MESSAGES.shippingInfo[lang];
+    let reply = pick(MESSAGES.shippingInfo, lang);
     if (city && SHIPPING_COSTS[city]) {
       const cityLabel = lang === "en" ? CITY_NAMES_EN[city] : city;
       const costLine = lang === "en"
@@ -548,7 +554,7 @@ async function chat(message) {
   if (detectReturnQuestion(text)) {
     return {
       success: true,
-      message: MESSAGES.returnPolicy[lang],
+      message: pick(MESSAGES.returnPolicy, lang),
       intent: "return_policy",
       category: null,
       budget: null,
@@ -667,26 +673,26 @@ if (!category && intent === "search") {
 
   if (products.length === 0) {
     if (category === "for-her") {
-      reply = MESSAGES.noMatchForHer[lang];
+      reply = pick(MESSAGES.noMatchForHer, lang);
     } else if (category === "for-him") {
-      reply = MESSAGES.noMatchForHim[lang];
+      reply = pick(MESSAGES.noMatchForHim, lang);
     } else if (category === "unisex") {
-      reply = MESSAGES.noMatchUnisex[lang];
+      reply = pick(MESSAGES.noMatchUnisex, lang);
     } else {
-      reply = MESSAGES.noMatchGeneric[lang];
+      reply = pick(MESSAGES.noMatchGeneric, lang);
     }
   } else if (category === "for-her") {
-    reply = MESSAGES.foundForHer[lang];
+    reply = pick(MESSAGES.foundForHer, lang);
   } else if (category === "for-him") {
-    reply = MESSAGES.foundForHim[lang];
+    reply = pick(MESSAGES.foundForHim, lang);
   } else if (category === "unisex") {
-    reply = MESSAGES.foundUnisex[lang];
+    reply = pick(MESSAGES.foundUnisex, lang);
   } else if (intent === "availability") {
-    reply = MESSAGES.foundAvailable[lang];
+    reply = pick(MESSAGES.foundAvailable, lang);
   } else if (intent === "recommend") {
-    reply = MESSAGES.foundRecommend[lang];
+    reply = pick(MESSAGES.foundRecommend, lang);
   } else {
-    reply = MESSAGES.foundGeneric[lang];
+    reply = pick(MESSAGES.foundGeneric, lang);
   }
 
   return {
