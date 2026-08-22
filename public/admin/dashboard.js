@@ -387,6 +387,12 @@ function renderOrders(data) {
         "<div><span>Items</span>" + esc(items) + "</div>" +
         "</div>" +
         '<div style="margin-bottom:12px;"><span style="display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:4px;">Delivery Timeline</span>' + timeline + "</div>" +
+        (o.bosta?.tracking_number
+          ? '<div style="margin-bottom:12px;">' +
+            '<button type="button" class="bosta-live-btn action-link" data-order-id="' + o.order_id + '" style="background:none;border:none;cursor:pointer;padding:0;">Refresh live from Bosta</button>' +
+            '<div id="bosta-live-' + o.order_id + '" style="margin-top:8px;font-size:12px;"></div>' +
+            "</div>"
+          : "") +
         '<select class="status-select" data-order-id="' + o.order_id + '">' +
         VALID_STATUSES.map((s) => '<option value="' + s + '" ' + (s === o.status ? "selected" : "") + ">" + s + "</option>").join("") +
         "</select>" +
@@ -408,7 +414,59 @@ function renderOrders(data) {
 
 let ordersSearchDebounce = null;
 
+const BOSTA_TIMELINE_LABELS = {
+  new: "Order created",
+  picked_up: "Picked up",
+  in_transit: "In transit",
+  out_for_delivery: "Out for delivery",
+  delivered: "Delivered",
+};
+
+function renderBostaLive(orderId, result) {
+  const el = document.getElementById("bosta-live-" + orderId);
+  if (!el) return;
+  if (!result.success) {
+    el.innerHTML = '<span style="color:var(--danger-text);">' + esc(result.error || "Failed to fetch") + "</span>";
+    return;
+  }
+
+  const timelineHtml = (result.timeline || [])
+    .map((step) => {
+      const label = BOSTA_TIMELINE_LABELS[step.value] || step.value;
+      const when = step.date ? new Date(step.date).toLocaleString() : "pending";
+      const color = step.done ? "var(--ink)" : "var(--muted)";
+      return '<li style="color:' + color + ';">' + esc(label) + " — " + esc(when) + (step.desc ? " (" + esc(step.desc) + ")" : "") + "</li>";
+    })
+    .join("");
+
+  el.innerHTML =
+    '<div style="margin-bottom:6px;"><strong>Live state:</strong> ' + esc(result.state?.value || "—") + "</div>" +
+    (result.cod != null ? '<div style="margin-bottom:6px;"><strong>COD amount:</strong> ' + money(result.cod) + "</div>" : "") +
+    (result.numberOfAttempts != null ? '<div style="margin-bottom:6px;"><strong>Delivery attempts:</strong> ' + result.numberOfAttempts + "</div>" : "") +
+    '<ul style="margin:6px 0 0;padding-left:18px;">' + timelineHtml + "</ul>";
+}
+
 function wireOrdersControls(data) {
+  document.querySelectorAll(".bosta-live-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const orderId = btn.getAttribute("data-order-id");
+      const el = document.getElementById("bosta-live-" + orderId);
+      if (el) el.innerHTML = '<span style="color:var(--muted);">Fetching…</span>';
+      btn.disabled = true;
+
+      fetch("/api/admin/orders/" + orderId + "/bosta-live")
+        .then((res) => res.json())
+        .then((result) => {
+          btn.disabled = false;
+          renderBostaLive(orderId, result);
+        })
+        .catch(() => {
+          btn.disabled = false;
+          renderBostaLive(orderId, { success: false, error: "Network error" });
+        });
+    });
+  });
+
   document.getElementById("status-filter").addEventListener("change", (e) => {
     ordersState.status = e.target.value;
     ordersState.page = 1;

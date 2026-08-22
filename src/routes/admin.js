@@ -15,6 +15,7 @@ const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
 const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
 const homepageContentStore = require("../lib/homepage-content-store");
+const { getDeliveryByTrackingNumber } = require("../lib/bosta");
 
 const router = express.Router();
 
@@ -390,6 +391,36 @@ router.get("/orders", async (req, res) => {
   } catch (error) {
     console.error("Orders list error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load orders" });
+  }
+});
+
+// Live pull straight from Bosta (not our webhook-derived history) — used
+// on demand from an order's expanded row, since polling this for every
+// order on every page load would be slow and needlessly hit Bosta's API.
+router.get("/orders/:orderId/bosta-live", async (req, res) => {
+  try {
+    const events = await getTrackingEvents(req.params.orderId);
+    const trackingNumber = events.length > 0 ? events[events.length - 1].trackingNumber : null;
+    if (!trackingNumber) {
+      return res.status(404).json({ success: false, error: "This order has no Bosta delivery yet" });
+    }
+
+    const delivery = await getDeliveryByTrackingNumber(trackingNumber);
+    if (!delivery) {
+      return res.status(404).json({ success: false, error: "Delivery not found on Bosta" });
+    }
+
+    res.json({
+      success: true,
+      state: delivery.state,
+      timeline: delivery.timeline,
+      cod: isModerator(req) ? undefined : delivery.cod,
+      numberOfAttempts: delivery.numberOfAttempts,
+      isDelayed: delivery.isDelayed,
+    });
+  } catch (error) {
+    console.error("Bosta live fetch error:", error.response?.data || error.message);
+    res.status(502).json({ success: false, error: "Unable to fetch live Bosta data" });
   }
 });
 
