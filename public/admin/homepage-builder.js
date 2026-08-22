@@ -2,6 +2,19 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 }[c]));
 
+(function wireThemeToggle() {
+  const btn = document.getElementById("theme-toggle-btn");
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  btn.textContent = isDark ? "☀️" : "🌙";
+
+  btn.addEventListener("click", () => {
+    const nowDark = document.documentElement.getAttribute("data-theme") !== "dark";
+    document.documentElement.setAttribute("data-theme", nowDark ? "dark" : "light");
+    localStorage.setItem("lana-admin-theme", nowDark ? "dark" : "light");
+    btn.textContent = nowDark ? "☀️" : "🌙";
+  });
+})();
+
 function getPath(obj, path) {
   return path.split(".").reduce((o, k) => (o == null ? undefined : o[k]), obj);
 }

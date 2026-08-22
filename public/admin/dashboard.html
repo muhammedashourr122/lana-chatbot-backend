@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin/dashboard.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("lana-admin-theme");
+    if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  })();
+</script>
 </head>
 <body>
 <div class="topbar">
@@ -20,6 +26,7 @@
       <button id="search-btn">Search</button>
     </div>
     <a href="/admin/homepage-builder" id="homepage-builder-link" style="display:none;">Homepage Builder</a>
+    <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <div id="user-menu" style="display:flex;align-items:center;gap:10px;"></div>
   </div>
 </div>

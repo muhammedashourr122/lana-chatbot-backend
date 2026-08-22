@@ -7,6 +7,22 @@ const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
 let currentUser = null;
 let VALID_STATUSES = [];
 
+// ---------------- Dark mode ----------------
+
+function wireThemeToggle() {
+  const btn = document.getElementById("theme-toggle-btn");
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  btn.textContent = isDark ? "☀️" : "🌙";
+
+  btn.addEventListener("click", () => {
+    const nowDark = document.documentElement.getAttribute("data-theme") !== "dark";
+    document.documentElement.setAttribute("data-theme", nowDark ? "dark" : "light");
+    localStorage.setItem("lana-admin-theme", nowDark ? "dark" : "light");
+    btn.textContent = nowDark ? "☀️" : "🌙";
+  });
+}
+wireThemeToggle();
+
 const REASON_LABELS = {
   delivery_exception: "Delivery Exception",
   silent_dispatch: "No Bosta Signal",

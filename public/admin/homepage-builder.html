@@ -8,6 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/admin/dashboard.css">
 <link rel="stylesheet" href="/admin/homepage-builder.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("lana-admin-theme");
+    if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  })();
+</script>
 </head>
 <body class="hb-body">
 
@@ -15,6 +21,7 @@
   <a href="/admin/dashboard" class="hb-back">&larr; Dashboard</a>
   <h1>Homepage Builder</h1>
   <div class="hb-topbar-actions">
+    <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <span id="hb-msg" class="hb-msg"></span>
     <button id="hb-save-btn" class="btn">Save</button>
   </div>

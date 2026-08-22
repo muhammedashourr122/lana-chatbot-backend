@@ -7,6 +7,7 @@
   border-bottom: 1px solid var(--border);
   padding: 14px 22px;
 }
+:root[data-theme="dark"] .hb-topbar { background: rgba(32,24,25,0.92); }
 .hb-back { color: var(--muted); text-decoration: none; font-size: 13px; font-weight: 500; }
 .hb-back:hover { color: var(--accent); }
 .hb-topbar h1 { flex: 1; font-size: 16px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
@@ -30,7 +31,7 @@
   cursor: pointer; user-select: none;
   border: 1px solid transparent;
 }
-.hb-nav-item:hover { background: #fff; }
+.hb-nav-item:hover { background: var(--card); }
 .hb-nav-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 .hb-nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
 .hb-nav-item.active .hb-nav-dot { background: var(--accent); }
@@ -49,7 +50,7 @@
 .hb-field label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .hb-field input, .hb-field textarea, .hb-field select {
   padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
-  font-family: inherit; font-size: 13px; background: #fff; color: var(--ink);
+  font-family: inherit; font-size: 13px; background: var(--card); color: var(--ink);
 }
 .hb-field input:focus, .hb-field textarea:focus, .hb-field select:focus { outline: none; border-color: var(--accent); }
 .hb-field textarea { resize: vertical; min-height: 56px; }
@@ -58,7 +59,7 @@
 .hb-subhead:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
 
 .hb-pm-list { display: flex; flex-direction: column; gap: 8px; }
-.hb-pm-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.hb-pm-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
 .hb-pm-enabled { display: flex; align-items: center; }
 .hb-pm-enabled input { width: 16px; height: 16px; }
 .hb-pm-fields { flex: 1; min-width: 0; display: grid; grid-template-columns: 160px 1fr; gap: 10px; }
