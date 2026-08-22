@@ -638,8 +638,26 @@
         "lana-bubble";
 
 
-      bubble.textContent =
+      const messageText =
         String(text || "");
+
+
+      if (
+        detectLang(messageText) ===
+        "en"
+      ) {
+
+        bubble.style.direction =
+          "ltr";
+
+        bubble.style.textAlign =
+          "left";
+
+      }
+
+
+      bubble.textContent =
+        messageText;
 
 
       wrapper.appendChild(
@@ -1080,7 +1098,18 @@
        OFFERS UI
        ===================================================== */
 
-    function showOffers() {
+    function detectLang(text) {
+
+      if (/[؀-ۿ]/.test(text)) {
+        return "ar";
+      }
+
+      return "en";
+
+    }
+
+
+    function showOffers(lang) {
 
       const wrapper =
         document.createElement(
@@ -1100,17 +1129,33 @@
         "100%";
 
 
+      const introHtml =
+        lang === "ar"
+          ? `
+            <strong>
+              العروض الحالية ✨
+            </strong>
+
+            <br>
+
+            اختار العرض المناسب:
+          `
+          : `
+            <strong>
+              Current Offers ✨
+            </strong>
+
+            <br>
+
+            Pick the offer that works for you:
+          `;
+
+
       container.innerHTML = `
 
         <div class="lana-bubble">
 
-          <strong>
-            Current Offers ✨
-          </strong>
-
-          <br>
-
-          اختاري العرض المناسب ليكي:
+          ${introHtml}
 
         </div>
 
@@ -1320,7 +1365,9 @@
           "offers"
         ) {
 
-          showOffers();
+          showOffers(
+            detectLang(message)
+          );
 
         }
 

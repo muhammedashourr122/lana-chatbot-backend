@@ -349,7 +349,10 @@ function detectIntent(text, category) {
     normalized.includes("عندكم ايه") ||
     normalized.includes("عندكم اي") ||
     normalized.includes("المتاح") ||
-    normalized.includes("available")
+    normalized.includes("available") ||
+    normalized.includes("products") ||
+    normalized.includes("catalog") ||
+    normalized.includes("what do you have")
   ) {
     return "products";
   }
