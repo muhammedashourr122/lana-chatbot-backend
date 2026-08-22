@@ -14,7 +14,6 @@ const adminCache = require("../lib/admin-cache");
 const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
 const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
-const { resetAllTrackingData } = require("../tracking-store");
 const homepageContentStore = require("../lib/homepage-content-store");
 
 const router = express.Router();
@@ -559,29 +558,6 @@ router.post("/settings", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Save settings error:", error.message);
     res.status(500).json({ success: false, error: "Unable to save settings" });
-  }
-});
-
-// ---- Owner-only: destructive reset ----
-// Wipes the Redis-based order index (tracking events, phone lookups,
-// known-orders) so the dashboard starts clean from today. Never touches
-// real orders on Easy Orders, nor user accounts/settings. Requires an
-// exact confirmation string — deliberately more friction than a single
-// click, given this app's history of an accidental destructive API call.
-
-router.post("/reset-data", requireOwner, async (req, res) => {
-  try {
-    if (req.body?.confirm !== "RESET") {
-      return res.status(400).json({ success: false, error: 'Send {"confirm":"RESET"} to proceed' });
-    }
-
-    const result = await resetAllTrackingData();
-    adminCache.invalidate("admin-data");
-    console.log(`[ADMIN-RESET] Triggered by "${req.user.username}":`, result);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    console.error("Reset data error:", error.message);
-    res.status(500).json({ success: false, error: "Unable to reset data" });
   }
 });
 

@@ -25,17 +25,30 @@
 </div>
 
 <div class="page">
+  <div class="tabs" id="dash-tabs">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+    <button class="tab-btn" data-tab="users" id="tab-btn-users" style="display:none;">Users & Roles</button>
+  </div>
+
   <div id="search-results"></div>
   <div id="customer-panel" style="display:none;margin-bottom:20px;"></div>
 
-  <div id="overview-root"><div class="skeleton"></div></div>
-  <div id="attention-root"></div>
-  <div id="governorates-root"></div>
-  <div id="top-products-root"></div>
-  <div id="orders-root"></div>
-  <div id="settings-root"></div>
-  <div id="users-root"></div>
-  <div id="danger-zone-root"></div>
+  <div class="tab-panel" data-tab-panel="overview">
+    <div id="overview-root"><div class="skeleton"></div></div>
+    <div id="attention-root"></div>
+    <div id="governorates-root"></div>
+    <div id="top-products-root"></div>
+    <div id="orders-root"></div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="settings" style="display:none;">
+    <div id="settings-root"></div>
+  </div>
+
+  <div class="tab-panel" data-tab-panel="users" style="display:none;">
+    <div id="users-root"></div>
+  </div>
 </div>
 
 <script type="module" src="/admin/dashboard.js"></script>

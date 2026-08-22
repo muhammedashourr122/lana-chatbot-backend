@@ -585,38 +585,18 @@ function renderUsers() {
     .catch(() => { root.innerHTML = ""; });
 }
 
-// ---------------- Danger zone: reset all dashboard data (owner-only) ----------------
+// ---------------- Tabs ----------------
 
-function renderDangerZone() {
-  const root = document.getElementById("danger-zone-root");
-  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
-
-  root.innerHTML = '<div class="section-card" style="border:1px solid var(--danger-text);">' +
-    '<h2 style="color:var(--danger-text);">Danger Zone</h2>' +
-    '<p class="empty" style="text-align:left;padding:0 0 12px;">Wipes this dashboard\'s order index (tracking history, phone lookups) so it starts clean from today. Real orders on Easy Orders are NOT affected — only this app\'s own memory of them. This cannot be undone.</p>' +
-    '<button id="open-reset-modal-btn" class="btn" style="background:var(--danger-text);">Reset Dashboard Data</button>' +
-    "</div>";
-
-  document.getElementById("open-reset-modal-btn").addEventListener("click", () => {
-    const typed = prompt('This cannot be undone. Type RESET (all caps) to confirm:');
-    if (typed !== "RESET") {
-      if (typed !== null) alert("Did not match — nothing was reset.");
-      return;
-    }
-    fetch("/api/admin/reset-data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirm: "RESET" }),
-    })
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success) {
-          alert("Reset complete. Tracking keys deleted: " + result.tracking_keys_deleted + ", phone keys deleted: " + result.phone_keys_deleted);
-          loadAll();
-        } else {
-          alert(result.error || "Reset failed");
-        }
+function wireTabs() {
+  const tabs = document.getElementById("dash-tabs");
+  tabs.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.getAttribute("data-tab");
+      tabs.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.style.display = panel.getAttribute("data-tab-panel") === target ? "" : "none";
       });
+    });
   });
 }
 
@@ -667,11 +647,12 @@ function init() {
 
       renderUserMenu();
       wireSearch();
+      wireTabs();
       renderSettings();
       renderUsers();
-      renderDangerZone();
       if (currentUser.role === "owner") {
         document.getElementById("homepage-builder-link").style.display = "inline-flex";
+        document.getElementById("tab-btn-users").style.display = "";
       }
 
       return loadAll();
