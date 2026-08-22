@@ -1,0 +1,180 @@
+<style>
+/* =========================================================
+   LANA'S BEAUTY — LUXURY ANNOUNCEMENT BAR
+   (content populated by homepage.js — data-field attributes)
+   ========================================================= */
+
+.lana-announcement {
+  width: 100%;
+  background: #6C4452;
+  color: #ffffff;
+  overflow: hidden;
+  position: relative;
+  z-index: 9999;
+  font-family: Arial, Helvetica, sans-serif;
+  box-sizing: border-box;
+}
+
+.lana-announcement-track {
+  position: relative;
+  width: 100%;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lana-announcement-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+
+  transform: translate(-50%, -50%);
+  opacity: 0;
+
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1.05px;
+  line-height: 1;
+
+  animation: lanaAnnouncement 12s infinite;
+}
+
+
+/* =========================================================
+   INDIVIDUAL TIMING
+   ========================================================= */
+
+.lana-announcement-item:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.lana-announcement-item:nth-child(2) {
+  animation-delay: 4s;
+}
+
+.lana-announcement-item:nth-child(3) {
+  animation-delay: 8s;
+}
+
+
+/* =========================================================
+   ELEGANT FADE
+   ========================================================= */
+
+@keyframes lanaAnnouncement {
+
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(5px);
+  }
+
+  6% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  27% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(0);
+  }
+
+  33% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(-5px);
+  }
+
+  100% {
+    opacity: 0;
+  }
+
+}
+
+
+/* =========================================================
+   DISCOUNT CODE
+   ========================================================= */
+
+.lana-announcement-code {
+  font-weight: 600;
+  letter-spacing: 1.15px;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .lana-announcement-track {
+    height: 36px;
+  }
+
+  .lana-announcement-item {
+    padding: 0 14px;
+
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.7px;
+  }
+
+  .lana-announcement-code {
+    font-weight: 600;
+    letter-spacing: 0.85px;
+  }
+
+
+  /* =======================================================
+     MOBILE MENU — KEEP ABOVE ANNOUNCEMENT
+     ======================================================= */
+
+  .mobile-menu,
+  .mobile-nav,
+  .mobile-navigation,
+  .mobile-menu-wrapper,
+  .mobile-menu-container,
+  .menu-drawer,
+  .drawer,
+  .offcanvas,
+  .off-canvas,
+  [class*="mobile-menu"],
+  [class*="menu-drawer"],
+  [class*="offcanvas"] {
+    z-index: 100000 !important;
+  }
+
+}
+</style>
+
+
+<!-- =========================================================
+     LANA'S BEAUTY — ANNOUNCEMENT BAR
+     ========================================================= -->
+
+<div class="lana-announcement">
+
+  <div class="lana-announcement-track">
+
+    <div class="lana-announcement-item" data-field="ann-1-text">
+      FREE SHIPPING ON ORDERS OVER EGP 999
+    </div>
+
+    <div class="lana-announcement-item">
+      <span data-field="ann-2-text">BUY 2 OR MORE &amp; SAVE 10% — USE CODE:</span>
+      <span class="lana-announcement-code" data-field="ann-2-code">SAVE10</span>
+    </div>
+
+    <div class="lana-announcement-item">
+      <span data-field="ann-3-text">BUY 3 GET 2 + FREE SHIPPING — USE CODE:</span>
+      <span class="lana-announcement-code" data-field="ann-3-code">EXPLORE5</span>
+    </div>
+
+  </div>
+
+</div>
