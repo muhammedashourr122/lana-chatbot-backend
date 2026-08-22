@@ -11,7 +11,7 @@ const authRouter = require("./routes/auth");
 const { requireSession, meHandler } = authRouter;
 const { bootstrapOwnerFromEnv } = require("./lib/users-store");
 const { getHomepageContent } = require("./lib/homepage-content-store");
-const { getAwbPdfByTrackingNumber } = require("./lib/bosta");
+const { getAwbPdfByTrackingNumber, getAwbPdfByTrackingNumbers } = require("./lib/bosta");
 
 const {
   getProducts,
@@ -289,6 +289,35 @@ app.get("/admin/awb/:orderId", async (req, res) => {
   } catch (error) {
     console.error("AWB fetch error:", error.response?.data || error.message);
     res.status(502).send("Unable to fetch AWB from Bosta");
+  }
+});
+
+app.get("/admin/awb-bulk", async (req, res) => {
+  const orderIds = String(req.query.orderIds || "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (orderIds.length === 0) {
+    return res.status(400).send("orderIds query param is required");
+  }
+
+  try {
+    const trackingNumbers = (
+      await Promise.all(
+        orderIds.map(async (id) => {
+          const events = await getTrackingEvents(id);
+          return events.length > 0 ? events[events.length - 1].trackingNumber : null;
+        })
+      )
+    ).filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      return res.status(404).send("None of the selected orders have a Bosta delivery yet");
+    }
+
+    const pdfBuffer = await getAwbPdfByTrackingNumbers(trackingNumbers);
+    res.set("Content-Type", "application/pdf");
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Bulk AWB fetch error:", error.response?.data || error.message);
+    res.status(502).send("Unable to fetch AWBs from Bosta");
   }
 });
 

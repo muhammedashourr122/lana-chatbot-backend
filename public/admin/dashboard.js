@@ -343,6 +343,7 @@ function renderOrders(data) {
       "<span>" + ordersState.selectedOrderIds.size + " selected</span>" +
       '<select id="bulk-status-select">' + VALID_STATUSES.map((s) => '<option value="' + s + '">' + s + "</option>").join("") + "</select>" +
       '<button id="bulk-apply-btn" class="btn">Apply to selected</button>' +
+      '<button id="bulk-awb-btn" type="button" class="btn" style="background:var(--card);border:1px solid var(--accent);color:var(--accent);">Print AWBs</button>' +
       '<span id="bulk-msg"></span></div>';
   }
 
@@ -567,6 +568,14 @@ function wireOrdersControls(data) {
           msg.style.color = "#c0392b";
         }
       });
+    });
+  }
+
+  const bulkAwbBtn = document.getElementById("bulk-awb-btn");
+  if (bulkAwbBtn) {
+    bulkAwbBtn.addEventListener("click", () => {
+      const ids = Array.from(ordersState.selectedOrderIds);
+      window.open("/admin/awb-bulk?orderIds=" + ids.map(encodeURIComponent).join(","), "_blank");
     });
   }
 

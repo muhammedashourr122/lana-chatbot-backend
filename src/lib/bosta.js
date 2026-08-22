@@ -30,14 +30,21 @@ async function getDeliveryByTrackingNumber(trackingNumber) {
 // Returns a Buffer of the AWB PDF for one delivery, given its Bosta
 // tracking number (as shown in our own order data / Bosta's dashboard).
 async function getAwbPdfByTrackingNumber(trackingNumber) {
-  const delivery = await getDeliveryByTrackingNumber(trackingNumber);
-  if (!delivery?._id) {
-    throw new Error("Delivery not found on Bosta");
+  return getAwbPdfByTrackingNumbers([trackingNumber]);
+}
+
+// Same, but for several deliveries at once — Bosta's own AWB endpoint
+// accepts a comma-separated `ids` list and returns one combined PDF.
+async function getAwbPdfByTrackingNumbers(trackingNumbers) {
+  const deliveries = await Promise.all(trackingNumbers.map((tn) => getDeliveryByTrackingNumber(tn)));
+  const ids = deliveries.filter(Boolean).map((d) => d._id);
+  if (ids.length === 0) {
+    throw new Error("None of these deliveries were found on Bosta");
   }
 
-  const http2 = await client();
-  const res = await http2.get("/deliveries/business/awb", {
-    params: { lang: "ar", blockUnAutoAssigned: true, ids: delivery._id },
+  const http = await client();
+  const res = await http.get("/deliveries/business/awb", {
+    params: { lang: "ar", blockUnAutoAssigned: true, ids: ids.join(",") },
   });
 
   const base64Pdf = res.data?.data;
@@ -47,4 +54,4 @@ async function getAwbPdfByTrackingNumber(trackingNumber) {
   return Buffer.from(base64Pdf, "base64");
 }
 
-module.exports = { getDeliveryByTrackingNumber, getAwbPdfByTrackingNumber };
+module.exports = { getDeliveryByTrackingNumber, getAwbPdfByTrackingNumber, getAwbPdfByTrackingNumbers };
