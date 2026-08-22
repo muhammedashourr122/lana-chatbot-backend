@@ -427,8 +427,10 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       state: delivery.state,
       timeline: delivery.timeline,
       cod: isModerator(req) ? undefined : delivery.cod,
+      shipmentFees: isModerator(req) ? undefined : delivery.shipmentFees,
       numberOfAttempts: delivery.numberOfAttempts,
       isDelayed: delivery.isDelayed,
+      slaBreached: Boolean(delivery.sla?.e2eSla?.isExceededE2ESla || delivery.sla?.orderSla?.isExceededOrderSla),
       stateLog,
     });
   } catch (error) {
