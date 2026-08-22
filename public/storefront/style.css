@@ -47,9 +47,12 @@ p.text-\[\#61758A\].line-through {
   color: rgba(108, 68, 82, 0.5) !important;
 }
 
-/* Checkout: contact info form section background */
+/* Checkout: contact info form section background, softened into a
+   card-like block instead of a flat color fill */
 section.bg-\[\#F7F7FA\] {
   background-color: #FBF6F2 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 10px rgba(108, 68, 82, 0.05) !important;
 }
 
 /* Checkout: free-shipping progress bar track + fill */
@@ -60,9 +63,12 @@ section.bg-\[\#F7F7FA\] {
   background-color: #6C4452 !important;
 }
 
-/* Product page: "Time Left For Discount" countdown */
+/* Product page: "Time Left For Discount" countdown — soft brand-tint
+   background added for better separation from the surrounding page,
+   on top of the existing border-color override */
 .border-\[\#E5E5EF\].shadow-\[0px_12px_40px_0px_\#7E8BA924\] {
   border-color: #E8D9DD !important;
+  background-color: #FBF6F2 !important;
 }
 .border-\[\#E5E5EF\].shadow-\[0px_12px_40px_0px_\#7E8BA924\] > span.text-xl.font-bold.text-\[\#010101\] {
   color: #6C4452 !important;

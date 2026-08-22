@@ -888,6 +888,21 @@
             );
 
 
+          const discountPercent =
+            hasSale
+              ? Math.round(
+                  (1 -
+                    Number(
+                      product.finalPrice ??
+                      product.salePrice ??
+                      product.price
+                    ) /
+                    Number(product.price)) *
+                    100
+                )
+              : 0;
+
+
           const inStock =
             Boolean(
               product.inStock
@@ -895,6 +910,16 @@
 
 
           card.innerHTML = `
+
+            ${
+              hasSale && discountPercent > 0
+                ? `
+                  <div class="lana-product-badge">
+                    -${discountPercent}%
+                  </div>
+                `
+                : ""
+            }
 
             <div class="lana-product-main">
 
@@ -967,6 +992,7 @@
                   }"
                 >
 
+                  <span class="lana-stock-dot"></span>
                   ${
                     inStock
                       ? "Available"

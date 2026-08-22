@@ -1,22 +1,32 @@
 /* =========================================================
-   LANA'S BEAUTY — CHATBOT V6.3
-   BASED ON STABLE V5
+   LANA'S BEAUTY — CHATBOT V7
+   Visual refresh: Jost typography (matches the live theme),
+   a consistent radius/shadow scale, and refined components.
+   Structure/markup unchanged from V6.3 except two additive
+   pieces: .lana-product-badge and .lana-stock-dot.
    ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=swap');
 
 #lana-chat-root {
   --lana-brand: #6c4452;
   --lana-brand-dark: #593744;
   --lana-brand-soft: #f4edef;
+  --lana-brand-tint: #efe1e5;
   --lana-cream: #fbf9f8;
   --lana-white: #ffffff;
   --lana-border: #e8dfe2;
   --lana-text: #30272b;
   --lana-muted: #8b7d82;
+  --lana-ok: #5c7a52;
+  --lana-shadow: rgba(89, 55, 68, .16);
 
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+
+  font-family: "Jost", Arial, Helvetica, sans-serif;
 }
 
 
@@ -49,7 +59,7 @@
   justify-content: center;
 
   box-shadow:
-    0 8px 25px rgba(108, 68, 82, .22),
+    0 8px 25px var(--lana-shadow),
     0 2px 8px rgba(0, 0, 0, .08);
 
   transition:
@@ -57,6 +67,29 @@
     background .2s ease,
     color .2s ease,
     box-shadow .2s ease;
+
+  animation: lanaButtonPulse 3.2s ease-in-out infinite;
+}
+
+@keyframes lanaButtonPulse {
+  0%, 100% {
+    box-shadow:
+      0 8px 25px var(--lana-shadow),
+      0 2px 8px rgba(0, 0, 0, .08),
+      0 0 0 0 rgba(108, 68, 82, .28);
+  }
+  50% {
+    box-shadow:
+      0 8px 25px var(--lana-shadow),
+      0 2px 8px rgba(0, 0, 0, .08),
+      0 0 0 8px rgba(108, 68, 82, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lana-chat-button {
+    animation: none;
+  }
 }
 
 .lana-chat-button:hover {
@@ -133,7 +166,7 @@
   background: #fff;
 
   border: 1px solid var(--lana-border);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
 
   overflow: hidden;
 
@@ -143,11 +176,23 @@
   flex-direction: column;
 
   box-shadow:
-    0 25px 70px rgba(72, 42, 53, .20);
+    0 30px 80px rgba(72, 42, 53, .22);
 }
 
 .lana-chat-window.open {
   display: flex;
+  animation: lanaWindowIn .22s ease;
+}
+
+@keyframes lanaWindowIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lana-chat-window.open {
+    animation: none;
+  }
 }
 
 
@@ -182,7 +227,7 @@
   align-items: center;
   justify-content: space-between;
 
-  background: #fff;
+  background: linear-gradient(180deg, #ffffff 0%, #fdfbfa 100%);
 
   border-bottom: 1px solid var(--lana-border);
 
@@ -192,12 +237,12 @@
 .lana-chat-brand {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
 }
 
 .lana-chat-avatar {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
 
   border-radius: 50%;
 
@@ -208,10 +253,12 @@
   align-items: center;
   justify-content: center;
 
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
 
   letter-spacing: .5px;
+
+  box-shadow: 0 0 0 3px var(--lana-brand-tint);
 }
 
 .lana-chat-brand-text {
@@ -222,7 +269,7 @@
 
 .lana-chat-brand-name {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
 
   color: var(--lana-text);
 }
@@ -232,6 +279,17 @@
   font-weight: 400;
 
   color: var(--lana-muted);
+}
+
+.lana-chat-brand-status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--lana-ok);
+  vertical-align: middle;
 }
 
 
@@ -264,11 +322,16 @@
   justify-content: center;
 
   transition:
-    background .2s ease;
+    background .2s ease,
+    transform .12s ease;
 }
 
 .lana-chat-action:hover {
   background: var(--lana-brand-soft);
+}
+
+.lana-chat-action:active {
+  transform: scale(.88);
 }
 
 
@@ -288,7 +351,7 @@
 
   -webkit-overflow-scrolling: touch;
 
-  padding: 17px;
+  padding: 18px;
 
   background: var(--lana-cream);
 
@@ -300,7 +363,7 @@
 
   width: 100%;
 
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .lana-message.user {
@@ -312,14 +375,14 @@
 }
 
 .lana-bubble {
-  max-width: 82%;
+  max-width: 84%;
 
-  padding: 11px 14px;
+  padding: 12px 15px;
 
-  border-radius: 15px;
+  border-radius: var(--radius-md);
 
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 13.5px;
+  line-height: 1.65;
 
   word-break: break-word;
 
@@ -336,7 +399,9 @@
 
   color: var(--lana-text);
 
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
+
+  box-shadow: 0 2px 8px rgba(89, 55, 68, .04);
 }
 
 .lana-message.user .lana-bubble {
@@ -344,7 +409,9 @@
 
   color: #fff;
 
-  border-bottom-right-radius: 5px;
+  border-bottom-right-radius: 6px;
+
+  box-shadow: 0 4px 12px var(--lana-shadow);
 }
 
 
@@ -358,7 +425,7 @@
   display: flex;
   flex-direction: column;
 
-  gap: 9px;
+  gap: 10px;
 
   margin-top: 4px;
 
@@ -370,20 +437,20 @@
 
   box-sizing: border-box;
 
-  padding: 13px 14px;
+  padding: 14px 16px;
 
   background: #fff;
 
   border: 1px solid var(--lana-border);
 
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 
   position: relative;
 
   overflow: hidden;
 
   box-shadow:
-    0 4px 14px rgba(108, 68, 82, .05);
+    0 4px 14px rgba(108, 68, 82, .06);
 }
 
 .lana-offer-card::before {
@@ -395,13 +462,13 @@
   top: 0;
   bottom: 0;
 
-  width: 3px;
+  width: 4px;
 
-  background: var(--lana-brand);
+  background: linear-gradient(180deg, var(--lana-brand) 0%, var(--lana-brand-dark) 100%);
 }
 
 .lana-offer-title {
-  font-size: 12px;
+  font-size: 12.5px;
 
   font-weight: 600;
 
@@ -409,7 +476,7 @@
 
   line-height: 1.4;
 
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 
   text-align: left;
 }
@@ -419,19 +486,19 @@
 
   align-items: center;
 
-  padding: 4px 8px;
+  padding: 5px 10px;
 
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 
   background: var(--lana-brand-soft);
 
   color: var(--lana-brand);
 
-  font-size: 9px;
+  font-size: 9.5px;
 
-  font-weight: 600;
+  font-weight: 700;
 
-  letter-spacing: .2px;
+  letter-spacing: .3px;
 
   direction: ltr;
 }
@@ -459,7 +526,7 @@
   display: flex;
   flex-direction: column;
 
-  gap: 10px;
+  gap: 11px;
 
   margin-top: 3px;
 }
@@ -471,37 +538,42 @@
 
   border: 1px solid var(--lana-border);
 
-  border-radius: 14px;
+  border-radius: var(--radius-md);
 
   overflow: hidden;
 
   box-sizing: border-box;
 
+  position: relative;
+
   transition:
     transform .18s ease,
-    box-shadow .18s ease;
+    box-shadow .18s ease,
+    border-color .18s ease;
 }
 
 .lana-product-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+
+  border-color: var(--lana-brand-tint);
 
   box-shadow:
-    0 7px 20px rgba(108, 68, 82, .10);
+    0 10px 24px rgba(108, 68, 82, .12);
 }
 
 .lana-product-main {
   display: flex;
 
-  padding: 10px;
+  padding: 11px;
 
-  gap: 11px;
+  gap: 12px;
 }
 
 .lana-product-image {
   width: 74px;
   height: 88px;
 
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
 
   object-fit: cover;
 
@@ -522,9 +594,9 @@
 }
 
 .lana-product-name {
-  font-size: 12px;
+  font-size: 12.5px;
 
-  font-weight: 500;
+  font-weight: 600;
 
   color: var(--lana-text);
 
@@ -534,9 +606,9 @@
 }
 
 .lana-product-description {
-  font-size: 10px;
+  font-size: 10.5px;
 
-  line-height: 1.4;
+  line-height: 1.45;
 
   color: var(--lana-muted);
 
@@ -556,7 +628,7 @@
 
   gap: 7px;
 
-  padding-top: 7px;
+  padding-top: 8px;
 }
 
 .lana-product-old-price {
@@ -568,25 +640,67 @@
 }
 
 .lana-product-current-price {
-  font-size: 12px;
+  font-size: 13px;
 
-  font-weight: 600;
+  font-weight: 700;
 
   color: var(--lana-brand);
 }
 
-.lana-product-stock {
-  margin-top: 5px;
+/* Discount badge — top corner of the card, shown only when on sale */
+.lana-product-badge {
+  position: absolute;
+
+  top: 9px;
+  right: 9px;
+
+  padding: 3px 8px;
+
+  border-radius: var(--radius-sm);
+
+  background: var(--lana-brand);
+  color: #fff;
 
   font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: .2px;
+
+  z-index: 1;
+}
+
+.lana-product-stock {
+  margin-top: 6px;
+
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  font-size: 9.5px;
+  font-weight: 500;
+}
+
+.lana-stock-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .lana-product-stock.available {
-  color: #65775f;
+  color: var(--lana-ok);
+}
+
+.lana-product-stock.available .lana-stock-dot {
+  background: var(--lana-ok);
 }
 
 .lana-product-stock.unavailable {
   color: #aaa;
+}
+
+.lana-product-stock.unavailable .lana-stock-dot {
+  background: #cfc9c9;
 }
 
 
@@ -595,23 +709,23 @@
    ========================================================= */
 
 .lana-product-button {
-  width: calc(100% - 20px);
+  width: calc(100% - 22px);
 
-  margin: 0 10px 10px;
+  margin: 0 11px 11px;
 
-  height: 35px;
+  height: 36px;
 
   border: 1px solid var(--lana-brand);
 
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
 
   background: var(--lana-brand);
 
   color: #fff;
 
-  font-size: 11px;
+  font-size: 11.5px;
 
-  font-weight: 500;
+  font-weight: 600;
 
   cursor: pointer;
 
@@ -625,7 +739,7 @@
   background: var(--lana-brand-dark);
 
   box-shadow:
-    0 5px 15px rgba(108, 68, 82, .18);
+    0 6px 16px rgba(108, 68, 82, .2);
 }
 
 .lana-product-button:active {
@@ -643,7 +757,7 @@
 
   gap: 4px;
 
-  padding: 11px 14px;
+  padding: 12px 15px;
 
   background: #fff;
 
@@ -651,9 +765,9 @@
 
   width: fit-content;
 
-  border-radius: 15px;
+  border-radius: var(--radius-md);
 
-  border-bottom-left-radius: 5px;
+  border-bottom-left-radius: 6px;
 }
 
 .lana-typing span {
@@ -698,7 +812,7 @@
    ========================================================= */
 
 .lana-chat-input-area {
-  padding: 11px;
+  padding: 12px;
 
   border-top: 1px solid var(--lana-border);
 
@@ -717,9 +831,16 @@
 
   border: 1px solid var(--lana-border);
 
-  border-radius: 13px;
+  border-radius: var(--radius-pill);
 
-  padding: 5px 5px 5px 13px;
+  padding: 5px 5px 5px 15px;
+
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.lana-chat-form:focus-within {
+  border-color: var(--lana-brand);
+  box-shadow: 0 0 0 3px var(--lana-brand-tint);
 }
 
 .lana-chat-input {
@@ -730,6 +851,7 @@
 
   background: transparent;
 
+  font-family: inherit;
   font-size: 16px;
 
   color: var(--lana-text);
@@ -747,14 +869,14 @@
 }
 
 .lana-chat-send {
-  width: 35px;
-  height: 35px;
+  width: 36px;
+  height: 36px;
 
   flex-shrink: 0;
 
   border: 0;
 
-  border-radius: 10px;
+  border-radius: 50%;
 
   background: var(--lana-brand);
 
