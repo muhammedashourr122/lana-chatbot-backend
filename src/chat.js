@@ -143,9 +143,7 @@ function detectThanks(text) {
 
 function detectOrderStatusQuestion(text) {
   const normalized = normalizeText(text);
-  return normalized.includes("طلب") || ["order status", "track my order", "where is my order", "track order"].some(
-    (w) => normalized.includes(w)
-  );
+  return normalized.includes("طلب") || ["order", "track"].some((w) => normalized.includes(w));
 }
 
 function detectOffersQuestion(text) {
