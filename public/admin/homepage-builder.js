@@ -282,6 +282,7 @@ function save() {
       btn.disabled = false;
       if (result.success) {
         content = result.content;
+        renderPanel();
         msg.textContent = "Saved.";
         msg.className = "hb-msg ok";
       } else {
