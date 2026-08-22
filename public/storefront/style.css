@@ -75,8 +75,10 @@ p.font-bold.text-\[\#010101\]:has(+ div[dir="ltr"]) {
 }
 
 /* Mobile side nav drawer: keep above the announcement bar's z-index: 9999
-   (exclude the dialog's own overlay/backdrop, which shares the id prefix) */
-div[role="dialog"]:not([data-cart="overlay"]),
+   (exclude the dialog's own overlay/backdrop, which shares the id prefix,
+   and exclude the chatbot widget's own dialog, which also uses role="dialog"
+   but must keep its own z-index of 2147483647 to stay above everything) */
+div[role="dialog"]:not([data-cart="overlay"]):not(#lana-chat-window),
 [id^="headlessui-dialog"]:not([id*="overlay"]),
 .relative.flex.w-full.max-w-xs.flex-col.overflow-y-auto.bg-white.pb-12.shadow-xl {
   z-index: 2147483000 !important;
