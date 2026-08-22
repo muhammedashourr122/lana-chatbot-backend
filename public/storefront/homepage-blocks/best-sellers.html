@@ -1,3 +1,571 @@
-<link rel="stylesheet" href="https://lana-chatbot-backend.onrender.com/storefront/homepage.css">
-<div id="lana-best-mount"></div>
-<script src="https://lana-chatbot-backend.onrender.com/storefront/homepage.js"></script>
+<style>
+/* =====================================================
+   LANA'S BEAUTY
+   BEST SELLERS V2.2 — FULL WIDTH
+   Rounded Image Treatment
+   (content populated by homepage.js — data-field attributes)
+===================================================== */
+
+.lana-best {
+  width: 100%;
+  max-width: none;
+
+  background: #fff;
+
+  padding: 48px 20px 58px;
+
+  box-sizing: border-box;
+}
+
+.lana-best * {
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   INNER — FULL WIDTH
+===================================================== */
+
+.lana-best-inner {
+  width: 100%;
+  max-width: none;
+
+  margin: 0 auto;
+}
+
+
+/* =====================================================
+   HEADER
+===================================================== */
+
+.lana-best-heading {
+  text-align: center;
+
+  margin-bottom: 28px;
+}
+
+.lana-best-eyebrow {
+  margin: 0 0 8px;
+
+  color: #8a6573;
+
+  font-size: 9px;
+  line-height: 1;
+
+  font-weight: 700;
+
+  letter-spacing: 3px;
+
+  text-transform: uppercase;
+}
+
+.lana-best-title {
+  margin: 0;
+
+  color: #211c1f;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 38px;
+  line-height: 1;
+
+  font-weight: 400;
+
+  letter-spacing: -1.2px;
+}
+
+
+/* =====================================================
+   PRODUCTS
+===================================================== */
+
+.lana-best-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 22px;
+
+  width: 100%;
+
+  max-width: 1100px;
+
+  margin: 0 auto;
+}
+
+.lana-best-card {
+  min-width: 0;
+
+  display: block;
+
+  color: inherit;
+
+  text-decoration: none !important;
+}
+
+
+/* =====================================================
+   IMAGE FRAME
+===================================================== */
+
+.lana-best-image {
+  position: relative;
+
+  width: 100%;
+
+  aspect-ratio: 1 / 1;
+
+  overflow: hidden;
+
+  border-radius: 22px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #fbf8f8 0%,
+      #f7f1f3 100%
+    );
+
+  border:
+    1px solid rgba(33,28,31,.055);
+
+  box-shadow:
+    0 10px 30px rgba(76,45,57,.045);
+
+  transition:
+    transform .4s ease,
+    box-shadow .4s ease;
+}
+
+
+/* =====================================================
+   SOFT LIGHT
+===================================================== */
+
+.lana-best-image::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  background:
+    radial-gradient(
+      circle at 50% 45%,
+      rgba(255,255,255,.75),
+      transparent 62%
+    );
+
+  pointer-events: none;
+}
+
+
+/* =====================================================
+   INNER BORDER
+===================================================== */
+
+.lana-best-image::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 3;
+
+  border:
+    1px solid rgba(33,28,31,.045);
+
+  border-radius: inherit;
+
+  pointer-events: none;
+}
+
+
+/* =====================================================
+   PRODUCT IMAGE
+===================================================== */
+
+.lana-best-image img {
+  position: relative;
+
+  z-index: 2;
+
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: contain;
+
+  padding: 8px;
+
+  border-radius: 22px;
+
+  transition:
+    transform .55s cubic-bezier(.2,.7,.2,1);
+}
+
+
+/* =====================================================
+   HOVER
+===================================================== */
+
+.lana-best-card:hover .lana-best-image {
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 18px 40px rgba(76,45,57,.10);
+}
+
+.lana-best-card:hover .lana-best-image img {
+  transform: scale(1.055);
+}
+
+
+/* =====================================================
+   INFO
+===================================================== */
+
+.lana-best-info {
+  padding: 14px 4px 0;
+
+  text-align: center;
+}
+
+.lana-best-name {
+  margin: 0;
+
+  color: #211c1f;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: 15px;
+  line-height: 1.25;
+
+  font-weight: 700;
+
+  letter-spacing: .1px;
+}
+
+.lana-best-shop {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 9px;
+
+  color: #8a6573;
+
+  font-size: 8px;
+  line-height: 1;
+
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  text-transform: uppercase;
+
+  transition:
+    color .25s ease;
+}
+
+.lana-best-shop::after {
+  content: "→";
+
+  margin-left: 7px;
+
+  font-size: 12px;
+
+  transition:
+    transform .25s ease;
+}
+
+.lana-best-card:hover .lana-best-shop {
+  color: #5a3d48;
+}
+
+.lana-best-card:hover .lana-best-shop::after {
+  transform: translateX(4px);
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1050px) {
+
+  .lana-best {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .lana-best-grid {
+    max-width: 900px;
+
+    gap: 18px;
+  }
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 767px) {
+
+  .lana-best {
+    width: 100%;
+
+    padding:
+      38px
+      14px
+      45px;
+  }
+
+
+  /* -----------------------------------------------
+     HEADER
+  ----------------------------------------------- */
+
+  .lana-best-heading {
+    margin-bottom: 22px;
+  }
+
+  .lana-best-eyebrow {
+    font-size: 8px;
+
+    letter-spacing: 2.5px;
+
+    margin-bottom: 8px;
+  }
+
+  .lana-best-title {
+    font-size: 31px;
+
+    letter-spacing: -.8px;
+  }
+
+
+  /* -----------------------------------------------
+     GRID
+  ----------------------------------------------- */
+
+  .lana-best-grid {
+    width: 100%;
+
+    max-width: none;
+
+    gap: 11px;
+  }
+
+
+  /* -----------------------------------------------
+     IMAGE
+  ----------------------------------------------- */
+
+  .lana-best-image {
+    border-radius: 17px;
+  }
+
+  .lana-best-image img {
+    padding: 6px;
+
+    border-radius: 17px;
+  }
+
+
+  /* -----------------------------------------------
+     INFO
+  ----------------------------------------------- */
+
+  .lana-best-info {
+    padding-top: 10px;
+  }
+
+  .lana-best-name {
+    font-size: 13px;
+  }
+
+  .lana-best-shop {
+    margin-top: 8px;
+
+    font-size: 7px;
+
+    letter-spacing: 1.7px;
+  }
+
+  .lana-best-shop::after {
+    font-size: 11px;
+  }
+}
+
+
+/* =====================================================
+   SMALL PHONES
+===================================================== */
+
+@media (max-width: 400px) {
+
+  .lana-best {
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .lana-best-grid {
+    gap: 9px;
+  }
+
+  .lana-best-image {
+    border-radius: 15px;
+  }
+
+  .lana-best-image img {
+    border-radius: 15px;
+
+    padding: 5px;
+  }
+
+  .lana-best-name {
+    font-size: 12px;
+  }
+
+  .lana-best-shop {
+    font-size: 6.5px;
+  }
+}
+
+
+/* =====================================================
+   REDUCED MOTION
+===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .lana-best *,
+  .lana-best *::before,
+  .lana-best *::after {
+    transition: none !important;
+  }
+}
+</style>
+
+
+<section class="lana-best">
+
+  <div class="lana-best-inner">
+
+
+    <!-- =================================================
+         HEADER
+    ================================================== -->
+
+    <div class="lana-best-heading">
+
+      <div class="lana-best-eyebrow" data-field="best-eyebrow">
+        Our Favorites
+      </div>
+
+      <h2 class="lana-best-title" data-field="best-title">
+        Best Sellers
+      </h2>
+
+    </div>
+
+
+    <!-- =================================================
+         PRODUCTS
+    ================================================== -->
+
+    <div class="lana-best-grid">
+
+
+      <!-- =================================================
+           PRODUCT 1
+      ================================================== -->
+
+      <a
+        href="https://www.lana-beauty.com/products/body-splash-pink-shadow"
+        class="lana-best-card"
+        data-field="best-link-1"
+      >
+
+        <div class="lana-best-image">
+
+          <img
+            src="https://easyorders.fra1.digitaloceanspaces.com/1785930294589500069.jpg"
+            alt="Best Seller 1"
+            loading="lazy"
+            data-field="best-image-1"
+          >
+
+        </div>
+
+        <div class="lana-best-info">
+
+          <h3 class="lana-best-name" data-field="best-name-1">
+            Pink Shadow
+          </h3>
+
+          <span class="lana-best-shop">
+            Shop Now
+          </span>
+
+        </div>
+
+      </a>
+
+
+      <!-- =================================================
+           PRODUCT 2
+      ================================================== -->
+
+      <a
+        href="https://www.lana-beauty.com/products/body-splash-shadow-noir"
+        class="lana-best-card"
+        data-field="best-link-2"
+      >
+
+        <div class="lana-best-image">
+
+          <img
+            src="https://easyorders.fra1.digitaloceanspaces.com/1785930305842986183.jpg"
+            alt="Best Seller 2"
+            loading="lazy"
+            data-field="best-image-2"
+          >
+
+        </div>
+
+        <div class="lana-best-info">
+
+          <h3 class="lana-best-name" data-field="best-name-2">
+            Shadow Noir
+          </h3>
+
+          <span class="lana-best-shop">
+            Shop Now
+          </span>
+
+        </div>
+
+      </a>
+
+
+    </div>
+
+  </div>
+
+</section>
+
