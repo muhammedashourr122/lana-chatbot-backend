@@ -406,8 +406,15 @@ async function chat(message) {
    *
    * Otherwise words like "عايز" / "حاجة" can accidentally
    * return unrelated catalog products.
+   *
+   * Also only run this for a real search intent, not a bare
+   * "recommend something" with no category — searching using the
+   * request's own wording (e.g. "رشحيلي"/"حاجة") as literal product
+   * search terms finds nothing and wrongly reports "no products",
+   * when it should just show general in-stock picks from the full
+   * catalog (already loaded above) instead.
    */
-if (!category && (intent === "search" || intent === "recommend")) {
+if (!category && intent === "search") {
   const searchableText = text
     .split(/\s+/)
     .map((word) => word.trim())
