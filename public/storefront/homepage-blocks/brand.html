@@ -1,0 +1,755 @@
+<style>
+/* =====================================================
+   LANA'S BEAUTY — WHY LANA'S BEAUTY V4
+   FULL WIDTH — CLEAN EDITORIAL BRAND STATEMENT
+   No Numbers
+   (content populated by homepage.js — data-field attributes)
+===================================================== */
+
+.lana-brand {
+  width: 100%;
+  max-width: none;
+
+  background: #fff;
+
+  padding: 75px 20px 80px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+.lana-brand * {
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   INNER
+===================================================== */
+
+.lana-brand-inner {
+  width: min(1180px, 100%);
+
+  margin: 0 auto;
+}
+
+
+/* =====================================================
+   TOP
+===================================================== */
+
+.lana-brand-top {
+  display: flex;
+
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 38px;
+}
+
+.lana-brand-kicker {
+  color: #8a6573;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: 3px;
+
+  text-transform: uppercase;
+}
+
+.lana-brand-small {
+  color: #9b9296;
+
+  font-size: 8px;
+
+  letter-spacing: 1.5px;
+
+  text-transform: uppercase;
+}
+
+
+/* =====================================================
+   MAIN STATEMENT
+===================================================== */
+
+.lana-brand-statement {
+  position: relative;
+
+  width: 100%;
+
+  padding: 58px 52px 55px;
+
+  background: #f8f2f4;
+
+  border-radius: 28px;
+
+  overflow: hidden;
+}
+
+
+/* =====================================================
+   DECORATIVE RINGS
+===================================================== */
+
+.lana-brand-ring {
+  position: absolute;
+
+  border:
+    1px solid rgba(138,101,115,.14);
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.lana-brand-ring.r1 {
+  width: 260px;
+  height: 260px;
+
+  left: -120px;
+  top: -130px;
+}
+
+.lana-brand-ring.r2 {
+  width: 430px;
+  height: 430px;
+
+  left: -205px;
+  top: -215px;
+}
+
+.lana-brand-ring.r3 {
+  width: 300px;
+  height: 300px;
+
+  right: -145px;
+  bottom: -150px;
+}
+
+.lana-brand-ring.r4 {
+  width: 500px;
+  height: 500px;
+
+  right: -245px;
+  bottom: -250px;
+}
+
+
+/* =====================================================
+   MAIN STATEMENT
+===================================================== */
+
+.lana-brand-main {
+  position: relative;
+
+  z-index: 3;
+
+  max-width: 820px;
+}
+
+.lana-brand-main h2 {
+  margin: 0;
+
+  color: #211c1f;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size:
+    clamp(42px, 5.3vw, 70px);
+
+  line-height: .98;
+
+  font-weight: 400;
+
+  letter-spacing: -2.5px;
+}
+
+.lana-brand-main h2 em {
+  color: #8a6573;
+
+  font-style: italic;
+}
+
+.lana-brand-main p {
+  max-width: 460px;
+
+  margin: 24px 0 0;
+
+  color: #70696c;
+
+  font-size: 11px;
+
+  line-height: 1.8;
+}
+
+
+/* =====================================================
+   VALUES
+===================================================== */
+
+.lana-brand-values {
+  position: relative;
+
+  z-index: 3;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  margin-top: 54px;
+
+  padding-top: 28px;
+
+  border-top:
+    1px solid rgba(138,101,115,.20);
+}
+
+.lana-brand-value {
+  min-width: 0;
+
+  padding:
+    0
+    38px
+    0
+    0;
+
+  transition:
+    transform .35s ease;
+}
+
+.lana-brand-value:not(:last-child) {
+  margin-right: 38px;
+
+  border-right:
+    1px solid rgba(138,101,115,.20);
+}
+
+
+/* =====================================================
+   VALUE TITLE
+===================================================== */
+
+.lana-brand-value-title {
+  margin: 0 0 10px;
+
+  color: #211c1f;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 24px;
+
+  line-height: 1;
+
+  font-weight: 400;
+
+  letter-spacing: -.4px;
+}
+
+
+/* =====================================================
+   VALUE TEXT
+===================================================== */
+
+.lana-brand-value-text {
+  max-width: 245px;
+
+  margin: 0;
+
+  color: #777074;
+
+  font-size: 9px;
+
+  line-height: 1.75;
+}
+
+
+/* =====================================================
+   VALUE ACCENT
+===================================================== */
+
+.lana-brand-value::before {
+  content: "";
+
+  display: block;
+
+  width: 25px;
+  height: 1px;
+
+  margin-bottom: 16px;
+
+  background: #8a6573;
+
+  opacity: .45;
+
+  transition:
+    width .35s ease,
+    opacity .35s ease;
+}
+
+.lana-brand-value:hover {
+  transform: translateY(-4px);
+}
+
+.lana-brand-value:hover::before {
+  width: 38px;
+
+  opacity: .8;
+}
+
+
+/* =====================================================
+   BOTTOM
+===================================================== */
+
+.lana-brand-bottom {
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  gap: 12px;
+
+  margin-top: 26px;
+}
+
+.lana-brand-bottom-line {
+  width: 30px;
+  height: 1px;
+
+  background: #8a6573;
+
+  opacity: .35;
+}
+
+.lana-brand-bottom-text {
+  color: #8a6573;
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  text-transform: uppercase;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 900px) {
+
+  .lana-brand {
+    padding:
+      60px
+      18px
+      65px;
+  }
+
+  .lana-brand-statement {
+    padding:
+      48px
+      34px
+      50px;
+  }
+
+  .lana-brand-main h2 {
+    font-size: 52px;
+  }
+
+  .lana-brand-values {
+    margin-top: 45px;
+
+    padding-top: 24px;
+  }
+
+  .lana-brand-value {
+    padding-right: 22px;
+  }
+
+  .lana-brand-value:not(:last-child) {
+    margin-right: 22px;
+  }
+
+  .lana-brand-value-title {
+    font-size: 21px;
+  }
+
+  .lana-brand-value-text {
+    font-size: 8.5px;
+  }
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 767px) {
+
+  .lana-brand {
+    padding:
+      45px
+      10px
+      48px;
+  }
+
+
+  /* -----------------------------------------------
+     TOP
+  ----------------------------------------------- */
+
+  .lana-brand-top {
+    margin-bottom: 23px;
+
+    padding:
+      0
+      3px;
+  }
+
+  .lana-brand-kicker {
+    font-size: 7px;
+
+    letter-spacing: 2.5px;
+  }
+
+  .lana-brand-small {
+    font-size: 6px;
+
+    letter-spacing: 1px;
+  }
+
+
+  /* -----------------------------------------------
+     MAIN BOX
+  ----------------------------------------------- */
+
+  .lana-brand-statement {
+    padding:
+      38px
+      22px
+      35px;
+
+    border-radius: 21px;
+  }
+
+
+  /* -----------------------------------------------
+     MAIN TITLE
+  ----------------------------------------------- */
+
+  .lana-brand-main h2 {
+    font-size: 40px;
+
+    line-height: 1;
+
+    letter-spacing: -1.5px;
+  }
+
+  .lana-brand-main p {
+    max-width: 290px;
+
+    margin-top: 19px;
+
+    font-size: 9px;
+
+    line-height: 1.75;
+  }
+
+
+  /* -----------------------------------------------
+     VALUES
+  ----------------------------------------------- */
+
+  .lana-brand-values {
+    grid-template-columns: 1fr;
+
+    margin-top: 36px;
+
+    padding-top: 0;
+
+    border-top: 0;
+  }
+
+  .lana-brand-value {
+    padding:
+      22px
+      0;
+  }
+
+  .lana-brand-value:not(:last-child) {
+    margin-right: 0;
+
+    border-right: 0;
+
+    border-bottom:
+      1px solid rgba(138,101,115,.18);
+  }
+
+  .lana-brand-value::before {
+    width: 22px;
+
+    margin-bottom: 12px;
+  }
+
+  .lana-brand-value-title {
+    margin-bottom: 6px;
+
+    font-size: 21px;
+  }
+
+  .lana-brand-value-text {
+    max-width: 290px;
+
+    font-size: 8px;
+
+    line-height: 1.75;
+  }
+
+
+  /* -----------------------------------------------
+     BOTTOM
+  ----------------------------------------------- */
+
+  .lana-brand-bottom {
+    margin-top: 21px;
+  }
+
+  .lana-brand-bottom-text {
+    font-size: 6px;
+
+    letter-spacing: 1.8px;
+  }
+
+
+  /* -----------------------------------------------
+     RINGS
+  ----------------------------------------------- */
+
+  .lana-brand-ring.r1 {
+    width: 190px;
+    height: 190px;
+
+    left: -90px;
+    top: -95px;
+  }
+
+  .lana-brand-ring.r2 {
+    width: 310px;
+    height: 310px;
+
+    left: -150px;
+    top: -155px;
+  }
+
+  .lana-brand-ring.r3 {
+    width: 220px;
+    height: 220px;
+
+    right: -105px;
+    bottom: -110px;
+  }
+
+  .lana-brand-ring.r4 {
+    width: 350px;
+    height: 350px;
+
+    right: -170px;
+    bottom: -175px;
+  }
+}
+
+
+/* =====================================================
+   SMALL PHONES
+===================================================== */
+
+@media (max-width: 400px) {
+
+  .lana-brand {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .lana-brand-statement {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .lana-brand-main h2 {
+    font-size: 36px;
+  }
+
+  .lana-brand-main p {
+    font-size: 8.5px;
+  }
+
+  .lana-brand-value-title {
+    font-size: 20px;
+  }
+
+  .lana-brand-value-text {
+    font-size: 8px;
+  }
+}
+
+
+/* =====================================================
+   REDUCED MOTION
+===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .lana-brand *,
+  .lana-brand *::before,
+  .lana-brand *::after {
+    transition: none !important;
+  }
+}
+</style>
+
+
+<section class="lana-brand">
+
+  <div class="lana-brand-inner">
+
+
+    <!-- =================================================
+         TOP
+    ================================================== -->
+
+    <div class="lana-brand-top">
+
+      <div class="lana-brand-kicker" data-field="brand-kicker">
+        Why Lana's Beauty
+      </div>
+
+      <div class="lana-brand-small" data-field="brand-small">
+        The art of fragrance
+      </div>
+
+    </div>
+
+
+    <!-- =================================================
+         MAIN STATEMENT
+    ================================================== -->
+
+    <div class="lana-brand-statement">
+
+      <!-- Decorative rings -->
+
+      <div class="lana-brand-ring r1"></div>
+      <div class="lana-brand-ring r2"></div>
+      <div class="lana-brand-ring r3"></div>
+      <div class="lana-brand-ring r4"></div>
+
+
+      <!-- Main statement -->
+
+      <div class="lana-brand-main">
+
+        <h2>
+          <span data-field="brand-title1">A scent is more</span><br>
+          <em data-field="brand-title2">than a fragrance.</em>
+        </h2>
+
+        <p data-field="brand-description">
+          It becomes a memory, a mood, a presence.
+          Lana's Beauty creates fragrances designed
+          to become part of your story.
+        </p>
+
+      </div>
+
+
+      <!-- =================================================
+           VALUES
+      ================================================== -->
+
+      <div class="lana-brand-values">
+
+
+        <!-- Crafted -->
+
+        <div class="lana-brand-value">
+
+          <h3 class="lana-brand-value-title" data-field="brand-value1-title">
+            Crafted
+          </h3>
+
+          <p class="lana-brand-value-text" data-field="brand-value1-text">
+            Carefully developed fragrances
+            with character and attention to detail.
+          </p>
+
+        </div>
+
+
+        <!-- Lasting -->
+
+        <div class="lana-brand-value">
+
+          <h3 class="lana-brand-value-title" data-field="brand-value2-title">
+            Lasting
+          </h3>
+
+          <p class="lana-brand-value-text" data-field="brand-value2-text">
+            Scents made to stay with you
+            throughout the moments that matter.
+          </p>
+
+        </div>
+
+
+        <!-- Personal -->
+
+        <div class="lana-brand-value">
+
+          <h3 class="lana-brand-value-title" data-field="brand-value3-title">
+            Personal
+          </h3>
+
+          <p class="lana-brand-value-text" data-field="brand-value3-text">
+            Different moods. Different people.
+            A fragrance that feels like yours.
+          </p>
+
+        </div>
+
+
+      </div>
+
+    </div>
+
+
+    <!-- =================================================
+         BOTTOM
+    ================================================== -->
+
+    <div class="lana-brand-bottom">
+
+      <span class="lana-brand-bottom-line"></span>
+
+      <span class="lana-brand-bottom-text" data-field="brand-bottom-text">
+        Wear Your Story
+      </span>
+
+      <span class="lana-brand-bottom-line"></span>
+
+    </div>
+
+
+  </div>
+
+</section>

@@ -80,6 +80,9 @@ app.use("/api/admin", adminRouter);
 app.get("/admin/dashboard", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/admin/dashboard.html"));
 });
+app.get("/admin/homepage-builder", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/admin/homepage-builder.html"));
+});
 app.use("/admin", express.static(path.join(__dirname, "../public/admin")));
 
 // Storefront CSS/JS overrides at a permanent URL — paste these into Easy

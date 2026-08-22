@@ -56,6 +56,20 @@ const DEFAULT_HOMEPAGE_CONTENT = {
       buttonLink: "https://www.lana-beauty.com/collections/all",
     },
   },
+  brand: {
+    kicker: "Why Lana's Beauty",
+    small: "The art of fragrance",
+    titleLine1: "A scent is more",
+    titleLine2Em: "than a fragrance.",
+    description: "It becomes a memory, a mood, a presence. Lana's Beauty creates fragrances designed to become part of your story.",
+    value1Title: "Crafted",
+    value1Text: "Carefully developed fragrances with character and attention to detail.",
+    value2Title: "Lasting",
+    value2Text: "Scents made to stay with you throughout the moments that matter.",
+    value3Title: "Personal",
+    value3Text: "Different moods. Different people. A fragrance that feels like yours.",
+    bottomText: "Wear Your Story",
+  },
 };
 
 async function getHomepageContent() {

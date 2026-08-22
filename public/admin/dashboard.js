@@ -526,152 +526,6 @@ function renderSettings() {
     .catch(() => { root.innerHTML = ""; });
 }
 
-// ---------------- Homepage content (owner-only) ----------------
-
-function homepageField(id, label, value, tag) {
-  tag = tag || "input";
-  const inputHtml = tag === "textarea"
-    ? '<textarea id="' + id + '" rows="2" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;">' + esc(value || "") + '</textarea>'
-    : '<input type="text" id="' + id + '" value="' + esc(value || "") + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;">';
-  return '<div><span>' + label + '</span>' + inputHtml + '</div>';
-}
-
-function productSelectHtml(id, products, selectedSlug) {
-  let html = '<div><span>' + id + '</span><select id="' + id + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;">';
-  html += '<option value="">— none —</option>';
-  products.forEach((p) => {
-    html += '<option value="' + esc(p.slug) + '" ' + (p.slug === selectedSlug ? "selected" : "") + '>' + esc(p.name) + '</option>';
-  });
-  html += '</select></div>';
-  return html;
-}
-
-function renderHomepageContent() {
-  const root = document.getElementById("homepage-content-root");
-  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
-
-  Promise.all([
-    fetch("/api/admin/homepage-content").then((res) => res.json()),
-    fetch("/api/products?limit=200").then((res) => res.json()),
-  ])
-    .then(([contentData, productsData]) => {
-      if (!contentData.success) { root.innerHTML = ""; return; }
-      const c = contentData.content;
-      const products = (productsData.data || productsData || []).map((p) => ({ slug: p.slug, name: p.name }));
-
-      let html = '<div class="section-card"><h2>Homepage Content <span class="hint">— edit the storefront\'s hero, best sellers, collections, and offers without touching code</span></h2>';
-
-      html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Hero</h3><div class="detail-grid">' +
-        homepageField("hc-hero-kicker", "Kicker", c.hero.kicker) +
-        homepageField("hc-hero-title1", "Title line 1", c.hero.titleLine1) +
-        homepageField("hc-hero-title2", "Title line 2 (italic)", c.hero.titleLine2Italic) +
-        homepageField("hc-hero-title3", "Title line 3", c.hero.titleLine3) +
-        homepageField("hc-hero-desc", "Description", c.hero.description, "textarea") +
-        homepageField("hc-hero-btn-text", "Button text", c.hero.buttonText) +
-        homepageField("hc-hero-btn-link", "Button link", c.hero.buttonLink) +
-        "</div>";
-
-      html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Offer Bar</h3><div class="detail-grid">' +
-        homepageField("hc-offerbar-text", "Top strip text", c.offerBar.text) +
-        "</div>";
-
-      html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Best Sellers</h3><div class="detail-grid">' +
-        homepageField("hc-best-eyebrow", "Eyebrow", c.bestSellers.eyebrow) +
-        homepageField("hc-best-title", "Title", c.bestSellers.title) +
-        productSelectHtml("hc-best-product-1", products, c.bestSellers.productSlugs[0]) +
-        productSelectHtml("hc-best-product-2", products, c.bestSellers.productSlugs[1]) +
-        "</div>";
-
-      html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Collections</h3><div class="detail-grid">' +
-        homepageField("hc-coll-kicker", "Kicker", c.collections.kicker) +
-        homepageField("hc-coll-title", "Title (HTML allowed, e.g. &lt;em&gt;)", c.collections.title) +
-        homepageField("hc-coll-subtitle", "Subtitle", c.collections.subtitle, "textarea") +
-        homepageField("hc-coll-her-label", "For Her label", c.collections.her.label) +
-        productSelectHtml("hc-coll-her-product", products, c.collections.her.productSlug) +
-        homepageField("hc-coll-him-label", "For Him label", c.collections.him.label) +
-        productSelectHtml("hc-coll-him-product", products, c.collections.him.productSlug) +
-        homepageField("hc-coll-unisex-label", "Unisex label", c.collections.unisex.label) +
-        productSelectHtml("hc-coll-unisex-product", products, c.collections.unisex.productSlug) +
-        "</div>";
-
-      ["box1", "box2"].forEach((boxKey, i) => {
-        const box = c.offers[boxKey];
-        html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Offer Box ' + (i + 1) + '</h3><div class="detail-grid">' +
-          homepageField("hc-" + boxKey + "-eyebrow", "Eyebrow", box.eyebrow) +
-          homepageField("hc-" + boxKey + "-title1", "Title line 1", box.titleLine1) +
-          homepageField("hc-" + boxKey + "-title2", "Title line 2 (italic)", box.titleLine2Italic) +
-          homepageField("hc-" + boxKey + "-note", "Note", box.note, "textarea") +
-          homepageField("hc-" + boxKey + "-code", "Discount code", box.code) +
-          homepageField("hc-" + boxKey + "-btn-text", "Button text", box.buttonText) +
-          homepageField("hc-" + boxKey + "-btn-link", "Button link", box.buttonLink) +
-          "</div>";
-      });
-
-      html += '<div style="margin-top:16px;"><button id="save-homepage-content-btn" class="btn">Save Homepage Content</button> <span id="homepage-content-msg"></span></div></div>';
-
-      root.innerHTML = html;
-
-      document.getElementById("save-homepage-content-btn").addEventListener("click", () => {
-        const msg = document.getElementById("homepage-content-msg");
-        const val = (id) => document.getElementById(id).value;
-
-        const content = {
-          hero: {
-            kicker: val("hc-hero-kicker"),
-            titleLine1: val("hc-hero-title1"),
-            titleLine2Italic: val("hc-hero-title2"),
-            titleLine3: val("hc-hero-title3"),
-            description: val("hc-hero-desc"),
-            buttonText: val("hc-hero-btn-text"),
-            buttonLink: val("hc-hero-btn-link"),
-          },
-          offerBar: { text: val("hc-offerbar-text") },
-          bestSellers: {
-            eyebrow: val("hc-best-eyebrow"),
-            title: val("hc-best-title"),
-            productSlugs: [val("hc-best-product-1"), val("hc-best-product-2")],
-          },
-          collections: {
-            kicker: val("hc-coll-kicker"),
-            title: val("hc-coll-title"),
-            subtitle: val("hc-coll-subtitle"),
-            her: { label: val("hc-coll-her-label"), productSlug: val("hc-coll-her-product") },
-            him: { label: val("hc-coll-him-label"), productSlug: val("hc-coll-him-product") },
-            unisex: { label: val("hc-coll-unisex-label"), productSlug: val("hc-coll-unisex-product") },
-          },
-          offers: {
-            box1: {
-              eyebrow: val("hc-box1-eyebrow"), titleLine1: val("hc-box1-title1"), titleLine2Italic: val("hc-box1-title2"), note: val("hc-box1-note"),
-              code: val("hc-box1-code"), buttonText: val("hc-box1-btn-text"), buttonLink: val("hc-box1-btn-link"),
-            },
-            box2: {
-              eyebrow: val("hc-box2-eyebrow"), titleLine1: val("hc-box2-title1"), titleLine2Italic: val("hc-box2-title2"), note: val("hc-box2-note"),
-              code: val("hc-box2-code"), buttonText: val("hc-box2-btn-text"), buttonLink: val("hc-box2-btn-link"),
-            },
-          },
-        };
-
-        msg.textContent = "Saving…";
-        fetch("/api/admin/homepage-content", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        })
-          .then((res) => res.json())
-          .then((result) => {
-            if (result.success) {
-              msg.textContent = "Saved.";
-              msg.style.color = "#2e7d32";
-            } else {
-              msg.textContent = result.error || "Failed to save.";
-              msg.style.color = "#c0392b";
-            }
-          });
-      });
-    })
-    .catch(() => { root.innerHTML = ""; });
-}
-
 // ---------------- Users management (owner-only) ----------------
 
 function renderUsers() {
@@ -814,9 +668,11 @@ function init() {
       renderUserMenu();
       wireSearch();
       renderSettings();
-      renderHomepageContent();
       renderUsers();
       renderDangerZone();
+      if (currentUser.role === "owner") {
+        document.getElementById("homepage-builder-link").style.display = "inline-flex";
+      }
 
       return loadAll();
     })

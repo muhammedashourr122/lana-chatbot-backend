@@ -94,6 +94,22 @@
         setAttr(key + "-btn-link", "href", box.buttonLink);
       });
     }
+
+    if (content.brand) {
+      var b = content.brand;
+      setText("brand-kicker", b.kicker);
+      setText("brand-small", b.small);
+      setText("brand-title1", b.titleLine1);
+      setText("brand-title2", b.titleLine2Em);
+      setText("brand-description", b.description);
+      setText("brand-value1-title", b.value1Title);
+      setText("brand-value1-text", b.value1Text);
+      setText("brand-value2-title", b.value2Title);
+      setText("brand-value2-text", b.value2Text);
+      setText("brand-value3-title", b.value3Title);
+      setText("brand-value3-text", b.value3Text);
+      setText("brand-bottom-text", b.bottomText);
+    }
   }
 
   var fetchedData = null;

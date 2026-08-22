@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lana Beauty — Homepage Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/dashboard.css">
+<link rel="stylesheet" href="/admin/homepage-builder.css">
+</head>
+<body class="hb-body">
+
+<div class="hb-topbar">
+  <a href="/admin/dashboard" class="hb-back">&larr; Dashboard</a>
+  <h1>Homepage Builder</h1>
+  <div class="hb-topbar-actions">
+    <span id="hb-msg" class="hb-msg"></span>
+    <button id="hb-save-btn" class="btn">Save</button>
+  </div>
+</div>
+
+<div class="hb-layout">
+  <nav class="hb-sidebar" id="hb-sidebar"></nav>
+  <main class="hb-panel" id="hb-panel">
+    <div class="skeleton"></div>
+  </main>
+</div>
+
+<script type="module" src="/admin/homepage-builder.js"></script>
+</body>
+</html>
