@@ -1,17 +1,43 @@
-﻿const {
+const {
   getCatalog,
   searchProducts,
   getProductsByCategory,
 } = require("./catalog");
+const { getOrder } = require("./easyorders");
+const { getOrderIdsForPhone, getTrackingEvents } = require("./tracking-store");
+
+// city:cost (EGP), from the merchant's real Easy Orders shipping table.
+const SHIPPING_COSTS = {
+  "المنيا": 135, "الاسكندرية": 115, "البحيرة": 115, "الجيزة": 105,
+  "اسوان": 155, "دمياط": 120, "القليوبية": 120, "بورسعيد": 120,
+  "القاهرة": 105, "الفيوم": 135, "البحر الاحمر": 155, "الغربية": 120,
+  "كفر الشيخ": 120, "المنوفية": 120, "جنوب سيناء": 180, "اسيوط": 135,
+  "شمال سيناء": 180, "الاسمعيلية": 120, "مطروح": 155, "الاقصر": 155,
+  "بني سويف": 135, "الوادي الجديد": 180, "الدقهلية": 120, "الشرقية": 120,
+  "السويس": 120, "سوهاج": 135, "قنا": 155, "الساحل الشمالي": 160,
+};
+
+const SHIPPING_INFO_REPLY =
+  "بنجهز الطلبات ونشحنها في أول يوم عمل بعد تأكيد الطلب (أيام العمل من الأحد للخميس).\n" +
+  "مدة التوصيل: من 2 لـ 4 أيام عمل للقاهرة والجيزة والاسكندرية، ومن 3 لـ 5 أيام عمل لباقي المحافظات.\n" +
+  "مصاريف الشحن بتختلف حسب المحافظة — قوليلي اسم محافظتك وأقولك المصاريف بالظبط.\n" +
+  "ملحوظة: في فترات الأوفرز ممكن يتأخر التوصيل شوية بسبب زيادة الطلبات، وميفيش تعديل على الطلب بعد تأكيده.";
+
+const RETURN_POLICY_REPLY =
+  "لو وصلك منتج تالف أو غلط، ابلغينا خلال 24 ساعة من استلام الطلب وهنتحمل مصاريف الاسترجاع أو الاستبدال بالكامل.\n" +
+  "لأي استرجاع تاني: المنتج لازم يكون في حالته الأصلية، مقفول، ومتفتحش، وخلال 14 يوم من الاستلام. المنتجات المفتوحة مينفعش ترجع خالص (حسب قانون حماية المستهلك).\n" +
+  "مهم جدا: الـ Body Splash والـ Body Lotion والشامبو والكونديشنر ومنتجات النظافة الشخصية عموما مينفعش ترجع أو تتستبدل لأسباب صحية، إلا لو كان فيه عيب أو غلط في الطلب.\n" +
+  "لو دفعتي فوري وحبيتي تلغي الطلب وقت الاستلام هيتخصم مصاريف الشحن، أما لو لغيتي فور الدفع مفيش خصم، والفلوس بترجع خلال 10-14 يوم على محفظة MEEZA أو Instapay.";
 
 function normalizeText(text = "") {
   return String(text)
     .trim()
     .toLowerCase()
+    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)) // Arabic-Indic digits -> ASCII
     .replace(/[إأآ]/g, "ا")
     .replace(/ى/g, "ي")
     .replace(/ة/g, "ه")
-    .replace(/[ًٌٍَُِّْـ]/g, "");
+    .replace(/[ًٌٍَُِّْـ]/g, "");
 }
 
 function formatProduct(product) {
@@ -24,7 +50,7 @@ function formatProduct(product) {
     inStock: product.inStock,
     quantity: product.quantity,
     image: product.image,
-url: product.url,
+    url: product.url,
     description: product.shortDescription,
     categories: product.categories.map(
       (category) => category.name
@@ -68,13 +94,68 @@ function detectCategory(text) {
   if (
     normalized.includes("unisex") ||
     normalized.includes("يونيسكس") ||
-    normalized.includes("يونيسكس") ||
-    normalized.includes("للجنسين") ||
     normalized.includes("للجنسين")
   ) {
     return "unisex";
   }
 
+  return null;
+}
+
+function detectPhone(text) {
+  // Egyptian mobile numbers: 01[0125] + 8 digits, optionally with a
+  // +20/0020/20 country-code prefix. Grabbed from raw digits so spacing
+  // or dashes in what the customer typed doesn't matter.
+  const digitsOnly = String(text).replace(/\D/g, "");
+  const match = digitsOnly.match(/(?:0020|20)?(01[0125]\d{8})/);
+  return match ? match[1] : null;
+}
+
+function detectCity(text) {
+  const normalized = normalizeText(text);
+  for (const city of Object.keys(SHIPPING_COSTS)) {
+    // Strip a leading "ال" (the) from the city name before comparing:
+    // Arabic prepositions ending in ل contract with a following "ال"
+    // into "لل" (e.g. لـ + القاهرة -> للقاهرة), which drops the "ا" and
+    // breaks a plain substring match against the article-form name.
+    const cityNorm = normalizeText(city);
+    const core = cityNorm.startsWith("ال") ? cityNorm.slice(2) : cityNorm;
+    if (normalized.includes(core)) return city;
+  }
+  return null;
+}
+
+function detectGreeting(text) {
+  const normalized = normalizeText(text);
+  return ["مرحبا", "اهلا", "هاي", "ازيك", "ازيكم", "صباح الخير", "مساء الخير", "hello", "hi ", "hey"].some(
+    (w) => normalized === w.trim() || normalized.startsWith(w.trim())
+  );
+}
+
+function detectThanks(text) {
+  const normalized = normalizeText(text);
+  return ["شكرا", "متشكر", "تسلم", "thanks", "thank you", "thx"].some((w) => normalized.includes(w));
+}
+
+function detectShippingQuestion(text) {
+  const normalized = normalizeText(text);
+  return ["شحن", "توصيل", "تشحن", "تشحنوا", "مصاريف الشحن", "كام يوم", "بتوصل امتي", "delivery", "shipping"].some(
+    (w) => normalized.includes(w)
+  );
+}
+
+function detectReturnQuestion(text) {
+  const normalized = normalizeText(text);
+  return [
+    "استرجاع", "استرجع", "استبدال", "ابدال", "ارجاع", "ارجع", "مرتجع",
+    "استرد فلوسي", "return", "exchange", "refund",
+  ].some((w) => normalized.includes(w));
+}
+
+function detectSortPreference(text) {
+  const normalized = normalizeText(text);
+  if (["ارخص", "الارخص", "اقل سعر", "cheapest"].some((w) => normalized.includes(w))) return "asc";
+  if (["اغلى", "الاغلى", "احلى سعر عالي", "most expensive"].some((w) => normalized.includes(w))) return "desc";
   return null;
 }
 
@@ -153,6 +234,48 @@ function detectBudget(text) {
     : null;
 }
 
+async function getOrderStatusReply(phone) {
+  let orderIds;
+  try {
+    orderIds = await getOrderIdsForPhone(phone);
+  } catch (e) {
+    return "مش قادر أتأكد من حالة الطلب دلوقتي، حاولي تاني بعد شوية.";
+  }
+
+  if (orderIds.length === 0) {
+    return "مش لاقي أي طلب مسجل بالرقم ده. اتأكدي إن الرقم صحيح، أو لو الطلب لسه جديد ممكن ياخد شوية لغاية ما يظهر.";
+  }
+
+  const orders = (
+    await Promise.all(
+      orderIds.map(async (id) => {
+        try {
+          return { order: await getOrder(id), events: await getTrackingEvents(id) };
+        } catch (e) {
+          return null;
+        }
+      })
+    )
+  ).filter(Boolean);
+
+  if (orders.length === 0) {
+    return "مش قادر أجيب تفاصيل الطلب دلوقتي، حاولي تاني بعد شوية.";
+  }
+
+  orders.sort((a, b) => new Date(b.order.created_at) - new Date(a.order.created_at));
+  const latest = orders[0];
+  const latestEvent = latest.events[latest.events.length - 1];
+
+  let reply = `طلبك رقم #${latest.order.short_id} حالته دلوقتي: ${latest.order.status}.`;
+  if (latestEvent) {
+    reply += ` آخر تحديث من شركة الشحن: ${latestEvent.stateName}.`;
+  }
+  if (orders.length > 1) {
+    reply += ` (عندك ${orders.length} طلبات مسجلة بالرقم ده — ده أحدثهم.)`;
+  }
+  return reply;
+}
+
 async function chat(message) {
   const text = normalizeText(message);
 
@@ -169,17 +292,80 @@ async function chat(message) {
     };
   }
 
+  // A phone number is an unambiguous signal — answer order status
+  // directly regardless of any other wording in the message. Use the
+  // already-normalized text so Arabic-Indic digits are recognized too.
+  const phone = detectPhone(text);
+  if (phone) {
+    const reply = await getOrderStatusReply(phone);
+    return {
+      success: true,
+      message: reply,
+      intent: "order_status",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  if (detectGreeting(text)) {
+    return {
+      success: true,
+      message: "أهلا بيكي في Lana's Beauty 🤍 قوليلي عايزة تعرفي ايه، أو دوري على منتج معين.",
+      intent: "greeting",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  if (detectThanks(text)) {
+    return {
+      success: true,
+      message: "العفو 🤍 لو احتجتي أي حاجة تانية أنا هنا.",
+      intent: "thanks",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  if (detectShippingQuestion(text)) {
+    const city = detectCity(text);
+    let reply = SHIPPING_INFO_REPLY;
+    if (city && SHIPPING_COSTS[city]) {
+      reply = `مصاريف الشحن لـ ${city}: ${SHIPPING_COSTS[city]} جنيه.\n\n` + reply;
+    }
+    return {
+      success: true,
+      message: reply,
+      intent: "shipping",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  if (detectReturnQuestion(text)) {
+    return {
+      success: true,
+      message: RETURN_POLICY_REPLY,
+      intent: "return_policy",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
   const category = detectCategory(text);
   const intent = detectIntent(text, category);
   const budget = detectBudget(text);
-
-  console.log("CHAT DEBUG:", {
-    original: message,
-    normalized: text,
-    category,
-    intent,
-    budget,
-  });
+  const sortPreference = detectSortPreference(text);
 
   let products;
 
@@ -265,6 +451,12 @@ if (!category && (intent === "search" || intent === "recommend")) {
     } else {
       products = [];
     }
+  }
+
+  if (sortPreference === "asc") {
+    products = products.slice().sort((a, b) => a.finalPrice - b.finalPrice);
+  } else if (sortPreference === "desc") {
+    products = products.slice().sort((a, b) => b.finalPrice - a.finalPrice);
   }
 
   products = products.slice(0, 6);
