@@ -1,0 +1,932 @@
+<style>
+/* =========================================================
+   LANA'S BEAUTY
+   LUXURY OFFER V4.0
+   Two Offers / Editorial / Soft Luxury / Responsive
+   (content populated by homepage.js — data-field attributes)
+========================================================= */
+
+.lana-offer {
+  width: 100%;
+  max-width: none;
+
+  background: #fff;
+
+  padding:
+    30px
+    20px
+    65px;
+
+  margin: 0;
+
+  box-sizing: border-box;
+}
+
+.lana-offer * {
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   INNER
+========================================================= */
+
+.lana-offer-inner {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   OFFERS GRID
+========================================================= */
+
+.lana-offer-grid {
+  width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+
+/* =========================================================
+   OFFER BOX
+========================================================= */
+
+.lana-offer-box {
+  position: relative;
+
+  width: 100%;
+  min-height: 270px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  border-radius: 26px;
+
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(255,255,255,.84),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 88% 82%,
+      rgba(138,101,115,.10),
+      transparent 36%
+    ),
+    #f8f2f4;
+
+  border:
+    1px solid rgba(138,101,115,.055);
+
+  box-shadow:
+    0 12px 35px rgba(52,35,42,.035);
+}
+
+
+/* =========================================================
+   SECOND OFFER — SLIGHTLY DISTINCT
+========================================================= */
+
+.lana-offer-box--explore {
+  background:
+    radial-gradient(
+      circle at 88% 16%,
+      rgba(255,255,255,.90),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 12% 85%,
+      rgba(138,101,115,.11),
+      transparent 38%
+    ),
+    #f6f0f2;
+}
+
+
+/* =========================================================
+   DECORATIVE CIRCLES
+========================================================= */
+
+.lana-offer-box::before {
+  content: "";
+
+  position: absolute;
+
+  width: 520px;
+  height: 520px;
+
+  right: -265px;
+  top: -150px;
+
+  border:
+    1px solid rgba(138,101,115,.12);
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.lana-offer-box::after {
+  content: "";
+
+  position: absolute;
+
+  width: 390px;
+  height: 390px;
+
+  left: -205px;
+  bottom: -225px;
+
+  border:
+    1px solid rgba(138,101,115,.10);
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.lana-offer-content {
+  position: relative;
+
+  z-index: 5;
+
+  width: 100%;
+
+  padding:
+    38px
+    42px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   LEFT / MAIN CONTENT
+========================================================= */
+
+.lana-offer-left {
+  width: 100%;
+  min-width: 0;
+
+  text-align: center;
+}
+
+.lana-offer-eyebrow {
+  margin: 0 0 12px;
+
+  color: #8a6573;
+
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 3px;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+}
+
+.lana-offer-title {
+  margin: 0;
+
+  color: #211c1f;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 39px;
+
+  font-weight: 400;
+
+  line-height: .98;
+
+  letter-spacing: -1.5px;
+}
+
+.lana-offer-title em {
+  color: #8a6573;
+
+  font-style: italic;
+}
+
+
+/* =========================================================
+   OFFER DESCRIPTION
+========================================================= */
+
+.lana-offer-note {
+  max-width: 300px;
+
+  margin:
+    14px
+    auto
+    0;
+
+  color: #756c70;
+
+  font-size: 10px;
+
+  line-height: 1.7;
+}
+
+
+/* =========================================================
+   CODE WRAP
+========================================================= */
+
+.lana-offer-code-wrap {
+  margin-top: 20px;
+
+  text-align: center;
+
+  white-space: nowrap;
+}
+
+.lana-offer-code-label {
+  margin: 0 0 9px;
+
+  color: #8a6573;
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 2.4px;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   CODE
+========================================================= */
+
+.lana-offer-code {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  min-width: 145px;
+
+  padding:
+    12px
+    16px;
+
+  border:
+    1px solid rgba(138,101,115,.22);
+
+  border-radius: 8px;
+
+  background:
+    rgba(255,255,255,.58);
+
+  box-shadow:
+    0 7px 22px rgba(60,40,48,.035);
+}
+
+.lana-offer-code strong {
+  color: #211c1f;
+
+  font-size: 17px;
+
+  font-weight: 800;
+
+  letter-spacing: 2.8px;
+
+  line-height: 1;
+
+  user-select: all;
+
+  -webkit-user-select: all;
+}
+
+
+/* =========================================================
+   COPY ICON
+========================================================= */
+
+.lana-offer-copy-icon {
+  position: relative;
+
+  width: 16px;
+  height: 16px;
+
+  opacity: .6;
+
+  cursor: pointer;
+}
+
+.lana-offer-copy-icon::before,
+.lana-offer-copy-icon::after {
+  content: "";
+
+  position: absolute;
+
+  width: 9px;
+  height: 10px;
+
+  border:
+    1px solid #8a6573;
+
+  border-radius: 2px;
+}
+
+.lana-offer-copy-icon::before {
+  left: 0;
+  top: 4px;
+}
+
+.lana-offer-copy-icon::after {
+  left: 4px;
+  top: 0;
+
+  background: #faf5f7;
+}
+
+
+/* =========================================================
+   EXPLORE BENEFITS
+========================================================= */
+
+.lana-offer-benefits {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 13px;
+
+  margin-top: 17px;
+
+  color: #756c70;
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.4px;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+}
+
+.lana-offer-benefit {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 5px;
+}
+
+.lana-offer-benefit::before {
+  content: "✦";
+
+  color: #8a6573;
+
+  font-size: 8px;
+}
+
+
+/* =========================================================
+   BUTTON
+========================================================= */
+
+.lana-offer-button {
+  position: relative;
+
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 10px;
+
+  margin-top: 19px;
+
+  padding:
+    0
+    0
+    7px;
+
+  border: 0;
+
+  border-bottom:
+    1px solid rgba(138,101,115,.65);
+
+  border-radius: 0;
+
+  background: transparent;
+
+  color: #5f4650 !important;
+
+  text-decoration: none !important;
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.9px;
+
+  line-height: 1;
+
+  text-transform: uppercase;
+
+  transition:
+    color .3s ease,
+    gap .35s ease,
+    border-color .3s ease;
+}
+
+.lana-offer-button::after {
+  content: "→";
+
+  font-size: 12px;
+
+  line-height: 1;
+
+  transition:
+    transform .35s ease;
+}
+
+.lana-offer-button:hover {
+  color: #8a6573 !important;
+
+  border-color: #8a6573;
+
+  background: transparent;
+
+  transform: none;
+
+  box-shadow: none;
+
+  gap: 14px;
+}
+
+.lana-offer-button:hover::after {
+  transform: translateX(3px);
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+  .lana-offer {
+    padding:
+      25px
+      18px
+      55px;
+  }
+
+  .lana-offer-grid {
+    gap: 14px;
+  }
+
+  .lana-offer-box {
+    min-height: 255px;
+
+    border-radius: 23px;
+  }
+
+  .lana-offer-content {
+    padding:
+      32px
+      22px;
+  }
+
+  .lana-offer-title {
+    font-size: 32px;
+  }
+
+  .lana-offer-note {
+    max-width: 250px;
+
+    font-size: 9px;
+  }
+
+  .lana-offer-code {
+    min-width: 130px;
+
+    padding:
+      11px
+      13px;
+  }
+
+  .lana-offer-code strong {
+    font-size: 15px;
+
+    letter-spacing: 2.3px;
+  }
+
+  .lana-offer-benefits {
+    gap: 9px;
+
+    font-size: 6.5px;
+
+    letter-spacing: 1.1px;
+  }
+
+  .lana-offer-button {
+    font-size: 6.5px;
+
+    letter-spacing: 1.6px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 767px) {
+
+  .lana-offer {
+    padding:
+      22px
+      10px
+      45px;
+  }
+
+  .lana-offer-inner {
+    width: 100%;
+  }
+
+  .lana-offer-grid {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 13px;
+  }
+
+  .lana-offer-box {
+    min-height: 340px;
+
+    border-radius: 21px;
+  }
+
+  .lana-offer-content {
+    width: 100%;
+
+    padding:
+      34px
+      18px;
+  }
+
+
+  /* -----------------------------------------------
+     TEXT
+  ----------------------------------------------- */
+
+  .lana-offer-eyebrow {
+    margin-bottom: 10px;
+
+    font-size: 7px;
+
+    letter-spacing: 2.4px;
+  }
+
+  .lana-offer-title {
+    font-size: 34px;
+
+    line-height: 1;
+
+    letter-spacing: -1px;
+  }
+
+  .lana-offer-note {
+    max-width: 270px;
+
+    margin-top: 13px;
+
+    font-size: 9px;
+
+    line-height: 1.65;
+  }
+
+
+  /* -----------------------------------------------
+     CODE
+  ----------------------------------------------- */
+
+  .lana-offer-code-wrap {
+    margin-top: 18px;
+  }
+
+  .lana-offer-code-label {
+    margin-bottom: 8px;
+
+    font-size: 6.5px;
+
+    letter-spacing: 2px;
+  }
+
+  .lana-offer-code {
+    min-width: auto;
+
+    padding:
+      12px
+      16px;
+  }
+
+  .lana-offer-code strong {
+    font-size: 16px;
+
+    letter-spacing: 2.5px;
+  }
+
+
+  /* -----------------------------------------------
+     BENEFITS
+  ----------------------------------------------- */
+
+  .lana-offer-benefits {
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin-top: 16px;
+
+    font-size: 6.5px;
+
+    letter-spacing: 1.3px;
+  }
+
+
+  /* -----------------------------------------------
+     BUTTON
+  ----------------------------------------------- */
+
+  .lana-offer-button {
+    margin-top: 18px;
+
+    font-size: 6.5px;
+
+    letter-spacing: 1.5px;
+  }
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 400px) {
+
+  .lana-offer {
+    padding:
+      18px
+      8px
+      40px;
+  }
+
+  .lana-offer-grid {
+    gap: 11px;
+  }
+
+  .lana-offer-box {
+    min-height: 325px;
+
+    border-radius: 18px;
+  }
+
+  .lana-offer-content {
+    padding:
+      30px
+      14px;
+  }
+
+  .lana-offer-title {
+    font-size: 31px;
+
+    letter-spacing: -.8px;
+  }
+
+  .lana-offer-note {
+    max-width: 235px;
+
+    font-size: 8.5px;
+  }
+
+  .lana-offer-code strong {
+    font-size: 15px;
+  }
+
+  .lana-offer-benefits {
+    font-size: 6px;
+
+    letter-spacing: 1.1px;
+  }
+
+  .lana-offer-button {
+    font-size: 6px;
+
+    letter-spacing: 1.35px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .lana-offer *,
+  .lana-offer *::before,
+  .lana-offer *::after {
+    transition: none !important;
+  }
+}
+</style>
+
+
+<section class="lana-offer">
+
+  <div class="lana-offer-inner">
+
+    <div class="lana-offer-grid">
+
+
+      <!-- =================================================
+           OFFER BOX 1 — SAVE10
+      ================================================== -->
+
+      <div class="lana-offer-box">
+
+        <div class="lana-offer-content">
+
+          <div class="lana-offer-left">
+
+            <div class="lana-offer-eyebrow" data-field="box1-eyebrow">
+              A Little Something Extra
+            </div>
+
+            <h2 class="lana-offer-title">
+              <span data-field="box1-title1">More scents.</span><br>
+              <em data-field="box1-title2">More to love.</em>
+            </h2>
+
+            <p class="lana-offer-note" data-field="box1-note">
+              Buy 2 or more fragrances
+              and enjoy 10% off your order.
+            </p>
+
+          </div>
+
+
+          <div class="lana-offer-code-wrap">
+
+            <div class="lana-offer-code-label">
+              Your exclusive code
+            </div>
+
+            <div class="lana-offer-code">
+
+              <strong data-field="box1-code">
+                SAVE10
+              </strong>
+
+              <span
+                class="lana-offer-copy-icon"
+                aria-hidden="true"
+              ></span>
+
+            </div>
+
+          </div>
+
+
+          <a
+            href="https://www.lana-beauty.com/collections/all"
+            class="lana-offer-button"
+            data-field="box1-btn-link"
+          >
+            <span data-field="box1-btn-text">SHOP THE COLLECTION</span>
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- =================================================
+           OFFER BOX 2 — EXPLORE5
+      ================================================== -->
+
+      <div class="lana-offer-box lana-offer-box--explore">
+
+        <div class="lana-offer-content">
+
+          <div class="lana-offer-left">
+
+            <div class="lana-offer-eyebrow" data-field="box2-eyebrow">
+              Explore More. Save More.
+            </div>
+
+            <h2 class="lana-offer-title">
+              <span data-field="box2-title1">Buy 3</span><br>
+              <em data-field="box2-title2">Get 2 + Free Shipping.</em>
+            </h2>
+
+            <p class="lana-offer-note" data-field="box2-note">
+              Choose 3 fragrances and receive
+              2 more absolutely free — with free shipping.
+            </p>
+
+          </div>
+
+
+          <div class="lana-offer-code-wrap">
+
+            <div class="lana-offer-code-label">
+              Your exclusive code
+            </div>
+
+            <div class="lana-offer-code">
+
+              <strong data-field="box2-code">
+                EXPLORE5
+              </strong>
+
+              <span
+                class="lana-offer-copy-icon"
+                aria-hidden="true"
+              ></span>
+
+            </div>
+
+          </div>
+
+
+          <div class="lana-offer-benefits">
+
+            <span class="lana-offer-benefit">
+              BUY 3
+            </span>
+
+            <span class="lana-offer-benefit">
+              GET 2 FREE
+            </span>
+
+            <span class="lana-offer-benefit">
+              FREE SHIPPING
+            </span>
+
+          </div>
+
+
+          <a
+            href="https://www.lana-beauty.com/collections/all"
+            class="lana-offer-button"
+            data-field="box2-btn-link"
+          >
+            <span data-field="box2-btn-text">EXPLORE THE COLLECTION</span>
+          </a>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+</section>
+
+<script src="https://lana-chatbot-backend.onrender.com/storefront/homepage.js"></script>

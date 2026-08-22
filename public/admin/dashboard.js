@@ -598,7 +598,8 @@ function renderHomepageContent() {
         const box = c.offers[boxKey];
         html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Offer Box ' + (i + 1) + '</h3><div class="detail-grid">' +
           homepageField("hc-" + boxKey + "-eyebrow", "Eyebrow", box.eyebrow) +
-          homepageField("hc-" + boxKey + "-title", "Title (HTML allowed)", box.title) +
+          homepageField("hc-" + boxKey + "-title1", "Title line 1", box.titleLine1) +
+          homepageField("hc-" + boxKey + "-title2", "Title line 2 (italic)", box.titleLine2Italic) +
           homepageField("hc-" + boxKey + "-note", "Note", box.note, "textarea") +
           homepageField("hc-" + boxKey + "-code", "Discount code", box.code) +
           homepageField("hc-" + boxKey + "-btn-text", "Button text", box.buttonText) +
@@ -640,11 +641,11 @@ function renderHomepageContent() {
           },
           offers: {
             box1: {
-              eyebrow: val("hc-box1-eyebrow"), title: val("hc-box1-title"), note: val("hc-box1-note"),
+              eyebrow: val("hc-box1-eyebrow"), titleLine1: val("hc-box1-title1"), titleLine2Italic: val("hc-box1-title2"), note: val("hc-box1-note"),
               code: val("hc-box1-code"), buttonText: val("hc-box1-btn-text"), buttonLink: val("hc-box1-btn-link"),
             },
             box2: {
-              eyebrow: val("hc-box2-eyebrow"), title: val("hc-box2-title"), note: val("hc-box2-note"),
+              eyebrow: val("hc-box2-eyebrow"), titleLine1: val("hc-box2-title1"), titleLine2Italic: val("hc-box2-title2"), note: val("hc-box2-note"),
               code: val("hc-box2-code"), buttonText: val("hc-box2-btn-text"), buttonLink: val("hc-box2-btn-link"),
             },
           },

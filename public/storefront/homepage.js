@@ -86,7 +86,8 @@
         var box = content.offers[key];
         if (!box) return;
         setText(key + "-eyebrow", box.eyebrow);
-        setHtml(key + "-title", box.title);
+        setText(key + "-title1", box.titleLine1);
+        setText(key + "-title2", box.titleLine2Italic);
         setText(key + "-note", box.note);
         setText(key + "-code", box.code);
         setText(key + "-btn-text", box.buttonText);
