@@ -1,0 +1,931 @@
+<style>
+/* =========================================================
+   LANA'S BEAUTY
+   SHOP BY COLLECTION — V4.4
+   FULL WIDTH / EDITORIAL POLISH
+   (content populated by homepage.js — data-field attributes)
+========================================================= */
+
+.lana-collections {
+  width: 100%;
+  max-width: none;
+
+  background: #fff;
+
+  padding: 68px 20px 66px;
+
+  box-sizing: border-box;
+}
+
+.lana-collections * {
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   INNER — FULL WIDTH
+========================================================= */
+
+.lana-collections-inner {
+  width: 100%;
+  max-width: none;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.lana-collections-header {
+  text-align: center;
+
+  margin-bottom: 40px;
+}
+
+.lana-collections-kicker {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  margin-bottom: 12px;
+
+  color: #8a6573;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  letter-spacing: 3.4px;
+  line-height: 1;
+
+  text-transform: uppercase;
+}
+
+.lana-collections-kicker::before,
+.lana-collections-kicker::after {
+  content: "";
+
+  width: 27px;
+  height: 1px;
+
+  background: #d8c7cd;
+}
+
+.lana-collections-title {
+  margin: 0;
+
+  color: #211c1f;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 48px;
+  line-height: .98;
+
+  font-weight: 400;
+
+  letter-spacing: -1.7px;
+}
+
+.lana-collections-title em {
+  color: #8a6573;
+
+  font-style: italic;
+}
+
+.lana-collections-subtitle {
+  max-width: 430px;
+
+  margin: 14px auto 0;
+
+  color: #777074;
+
+  font-size: 10px;
+
+  line-height: 1.72;
+
+  letter-spacing: .05px;
+}
+
+
+/* =========================================================
+   GRID — WIDE
+========================================================= */
+
+.lana-collections-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 20px;
+
+  width: 100%;
+
+  max-width: 1200px;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.lana-collection-card {
+  position: relative;
+
+  display: block;
+
+  width: 100%;
+  height: 430px;
+
+  overflow: hidden;
+
+  color: inherit;
+
+  text-decoration: none !important;
+
+  border-radius: 24px;
+
+  background: #eee;
+
+  border:
+    1px solid rgba(43,31,36,.09);
+
+  isolation: isolate;
+
+  box-shadow:
+    0 12px 32px rgba(52,35,42,.055);
+}
+
+
+/* =========================================================
+   IMAGE
+========================================================= */
+
+.lana-collection-product {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+
+  object-position: center;
+
+  transform: scale(1.012);
+
+  transition:
+    transform 1s cubic-bezier(.2,.7,.2,1),
+    filter 1s ease;
+}
+
+
+/* =========================================================
+   FOR HER OVERLAY
+========================================================= */
+
+.lana-collection-card.her::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.025) 0%,
+      rgba(255,255,255,0) 43%,
+      rgba(116,76,89,.07) 59%,
+      rgba(102,63,77,.30) 80%,
+      rgba(83,50,61,.56) 100%
+    );
+}
+
+
+/* =========================================================
+   FOR HIM OVERLAY
+========================================================= */
+
+.lana-collection-card.him::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.025) 0%,
+      rgba(255,255,255,0) 43%,
+      rgba(83,77,73,.07) 59%,
+      rgba(71,65,62,.30) 80%,
+      rgba(63,57,54,.56) 100%
+    );
+}
+
+
+/* =========================================================
+   UNISEX OVERLAY
+========================================================= */
+
+.lana-collection-card.unisex::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.025) 0%,
+      rgba(255,255,255,0) 43%,
+      rgba(105,86,72,.06) 59%,
+      rgba(88,70,58,.27) 80%,
+      rgba(72,58,49,.53) 100%
+    );
+}
+
+
+/* =========================================================
+   SOFT LIGHT
+========================================================= */
+
+.lana-collection-card.her::after,
+.lana-collection-card.him::after,
+.lana-collection-card.unisex::after {
+  content: "";
+
+  position: absolute;
+
+  top: -20%;
+  left: 50%;
+
+  z-index: 2;
+
+  width: 72%;
+  height: 55%;
+
+  transform: translateX(-50%);
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,.28) 0%,
+      rgba(255,255,255,0) 70%
+    );
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   INNER FRAME
+========================================================= */
+
+.lana-collection-frame {
+  position: absolute;
+
+  inset: 7px;
+
+  z-index: 6;
+
+  border:
+    1px solid rgba(255,255,255,.46);
+
+  border-radius: 19px;
+
+  pointer-events: none;
+
+  transition:
+    inset .55s cubic-bezier(.2,.7,.2,1),
+    border-color .55s ease;
+}
+
+
+/* =========================================================
+   INFO
+========================================================= */
+
+.lana-collection-info {
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 5;
+
+  padding:
+    0
+    25px
+    25px;
+
+  text-align: center;
+
+  text-shadow:
+    0 2px 12px rgba(55,38,45,.18);
+}
+
+
+/* =========================================================
+   LABEL
+========================================================= */
+
+.lana-collection-label {
+  margin-bottom: 8px;
+
+  color: rgba(255,255,255,.87);
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 2.3px;
+  line-height: 1.2;
+
+  text-transform: uppercase;
+}
+
+
+/* =========================================================
+   NAME
+========================================================= */
+
+.lana-collection-name {
+  margin: 0;
+
+  color: #fff;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: 39px;
+
+  line-height: .94;
+
+  font-weight: 400;
+
+  letter-spacing: -1px;
+
+  transition:
+    transform .5s ease;
+}
+
+
+/* =========================================================
+   CTA
+========================================================= */
+
+.lana-collection-shop {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  margin-top: 15px;
+
+  padding:
+    0
+    0
+    7px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.66);
+
+  color: rgba(255,255,255,.96);
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.8px;
+  line-height: 1;
+
+  text-transform: uppercase;
+
+  transition:
+    gap .45s ease,
+    border-color .45s ease;
+}
+
+.lana-collection-arrow {
+  font-size: 11px;
+
+  line-height: 1;
+
+  transition:
+    transform .45s ease;
+}
+
+
+/* =========================================================
+   HOVER
+========================================================= */
+
+.lana-collection-card:hover
+.lana-collection-product {
+  transform: scale(1.052);
+}
+
+.lana-collection-card:hover
+.lana-collection-name {
+  transform: translateY(-3px);
+}
+
+.lana-collection-card:hover
+.lana-collection-shop {
+  gap: 13px;
+
+  border-color: #fff;
+}
+
+.lana-collection-card:hover
+.lana-collection-arrow {
+  transform: translateX(3px);
+}
+
+.lana-collection-card:hover
+.lana-collection-frame {
+  inset: 10px;
+
+  border-color:
+    rgba(255,255,255,.70);
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+  .lana-collections {
+    padding:
+      58px
+      18px
+      55px;
+  }
+
+  .lana-collections-header {
+    margin-bottom: 34px;
+  }
+
+  .lana-collections-title {
+    font-size: 42px;
+  }
+
+  .lana-collections-grid {
+    gap: 14px;
+
+    max-width: 900px;
+  }
+
+  .lana-collection-card {
+    height: 365px;
+
+    border-radius: 21px;
+  }
+
+  .lana-collection-frame {
+    inset: 6px;
+
+    border-radius: 16px;
+  }
+
+  .lana-collection-info {
+    padding:
+      0
+      16px
+      20px;
+  }
+
+  .lana-collection-name {
+    font-size: 31px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 767px) {
+
+  .lana-collections {
+    width: 100%;
+
+    padding:
+      43px
+      10px
+      44px;
+  }
+
+  .lana-collections-header {
+    margin-bottom: 27px;
+  }
+
+  .lana-collections-kicker {
+    gap: 8px;
+
+    margin-bottom: 9px;
+
+    font-size: 6.7px;
+
+    letter-spacing: 2.5px;
+  }
+
+  .lana-collections-kicker::before,
+  .lana-collections-kicker::after {
+    width: 17px;
+  }
+
+  .lana-collections-title {
+    font-size: 34px;
+
+    letter-spacing: -1.15px;
+  }
+
+  .lana-collections-subtitle {
+    max-width: 295px;
+
+    margin-top: 10px;
+
+    font-size: 8.7px;
+
+    line-height: 1.68;
+  }
+
+
+  /* =========================================
+     GRID
+  ========================================= */
+
+  .lana-collections-grid {
+    width: 100%;
+
+    max-width: none;
+
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    gap: 7px;
+  }
+
+
+  /* =========================================
+     CARD
+  ========================================= */
+
+  .lana-collection-card {
+    height: 270px;
+
+    border-radius: 16px;
+
+    box-shadow:
+      0 8px 20px rgba(52,35,42,.045);
+  }
+
+
+  /* =========================================
+     IMAGE
+  ========================================= */
+
+  .lana-collection-product {
+    transform: scale(1.018);
+  }
+
+
+  /* =========================================
+     FRAME
+  ========================================= */
+
+  .lana-collection-frame {
+    inset: 5px;
+
+    border-radius: 12px;
+  }
+
+
+  /* =========================================
+     INFO
+  ========================================= */
+
+  .lana-collection-info {
+    padding:
+      0
+      7px
+      13px;
+
+    text-shadow:
+      0 1px 8px rgba(55,38,45,.24);
+  }
+
+  .lana-collection-label {
+    margin-bottom: 5px;
+
+    font-size: 4.7px;
+
+    letter-spacing: 1px;
+
+    white-space: nowrap;
+  }
+
+  .lana-collection-name {
+    font-size: 21px;
+
+    letter-spacing: -.45px;
+  }
+
+  .lana-collection-shop {
+    margin-top: 8px;
+
+    padding-bottom: 4px;
+
+    gap: 4px;
+
+    font-size: 4.8px;
+
+    letter-spacing: .85px;
+  }
+
+  .lana-collection-arrow {
+    font-size: 9px;
+  }
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 400px) {
+
+  .lana-collections {
+    padding:
+      39px
+      8px
+      39px;
+  }
+
+  .lana-collections-header {
+    margin-bottom: 24px;
+  }
+
+  .lana-collections-title {
+    font-size: 31px;
+  }
+
+  .lana-collections-subtitle {
+    font-size: 8.2px;
+  }
+
+  .lana-collections-grid {
+    gap: 5px;
+  }
+
+  .lana-collection-card {
+    height: 245px;
+
+    border-radius: 14px;
+  }
+
+  .lana-collection-frame {
+    inset: 4px;
+
+    border-radius: 11px;
+  }
+
+  .lana-collection-info {
+    padding:
+      0
+      5px
+      11px;
+  }
+
+  .lana-collection-name {
+    font-size: 18px;
+  }
+
+  .lana-collection-label {
+    font-size: 4.2px;
+
+    letter-spacing: .8px;
+  }
+
+  .lana-collection-shop {
+    margin-top: 7px;
+
+    font-size: 4.5px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .lana-collections *,
+  .lana-collections *::before,
+  .lana-collections *::after {
+    transition: none !important;
+  }
+}
+</style>
+
+
+<section class="lana-collections">
+
+  <div class="lana-collections-inner">
+
+
+    <!-- =================================================
+         HEADER
+    ================================================= -->
+
+    <header class="lana-collections-header">
+
+      <div class="lana-collections-kicker" data-field="coll-kicker">
+        Discover Lana's Beauty
+      </div>
+
+      <h2 class="lana-collections-title" data-field="coll-title">
+        Find Your <em>Signature</em>
+      </h2>
+
+      <p class="lana-collections-subtitle" data-field="coll-subtitle">
+        Three fragrance worlds. One made for you.
+        Explore the collection that speaks your language.
+      </p>
+
+    </header>
+
+
+    <!-- =================================================
+         COLLECTION GRID
+    ================================================= -->
+
+    <div class="lana-collections-grid">
+
+
+      <!-- =================================================
+           FOR HER
+      ================================================= -->
+
+      <a
+        href="https://www.lana-beauty.com/collections/for-her"
+        class="lana-collection-card her"
+        data-field="coll-her-link"
+      >
+
+        <img
+          class="lana-collection-product"
+          src="https://easyorders.fra1.digitaloceanspaces.com/1785930294589500069.jpg"
+          alt="Lana's Beauty For Her"
+          loading="lazy"
+          data-field="coll-her-image"
+        >
+
+        <span class="lana-collection-frame"></span>
+
+        <div class="lana-collection-info">
+
+          <div class="lana-collection-label" data-field="coll-her-label">
+            Feminine Fragrances
+          </div>
+
+          <h3 class="lana-collection-name">
+            For Her
+          </h3>
+
+          <span class="lana-collection-shop">
+            Shop Collection
+            <span class="lana-collection-arrow">→</span>
+          </span>
+
+        </div>
+
+      </a>
+
+
+      <!-- =================================================
+           FOR HIM
+      ================================================= -->
+
+      <a
+        href="https://www.lana-beauty.com/collections/for-him"
+        class="lana-collection-card him"
+        data-field="coll-him-link"
+      >
+
+        <img
+          class="lana-collection-product"
+          src="https://easyorders.fra1.digitaloceanspaces.com/1785930305842986183.jpg"
+          alt="Lana's Beauty For Him"
+          loading="lazy"
+          data-field="coll-him-image"
+        >
+
+        <span class="lana-collection-frame"></span>
+
+        <div class="lana-collection-info">
+
+          <div class="lana-collection-label" data-field="coll-him-label">
+            Masculine Fragrances
+          </div>
+
+          <h3 class="lana-collection-name">
+            For Him
+          </h3>
+
+          <span class="lana-collection-shop">
+            Shop Collection
+            <span class="lana-collection-arrow">→</span>
+          </span>
+
+        </div>
+
+      </a>
+
+
+      <!-- =================================================
+           UNISEX
+      ================================================= -->
+
+      <a
+        href="https://www.lana-beauty.com/collections/unisex"
+        class="lana-collection-card unisex"
+        data-field="coll-unisex-link"
+      >
+
+        <img
+          class="lana-collection-product"
+          src="https://easyorders.fra1.digitaloceanspaces.com/1785930290736567058.jpg"
+          alt="Lana's Beauty Unisex"
+          loading="lazy"
+          data-field="coll-unisex-image"
+        >
+
+        <span class="lana-collection-frame"></span>
+
+        <div class="lana-collection-info">
+
+          <div class="lana-collection-label" data-field="coll-unisex-label">
+            Genderless Fragrances
+          </div>
+
+          <h3 class="lana-collection-name">
+            Unisex
+          </h3>
+
+          <span class="lana-collection-shop">
+            Shop Collection
+            <span class="lana-collection-arrow">→</span>
+          </span>
+
+        </div>
+
+      </a>
+
+
+    </div>
+
+  </div>
+
+</section>
+
+<script src="https://lana-chatbot-backend.onrender.com/storefront/homepage.js"></script>

@@ -15,6 +15,7 @@ const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
 const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
 const { resetAllTrackingData } = require("../tracking-store");
+const homepageContentStore = require("../lib/homepage-content-store");
 
 const router = express.Router();
 
@@ -581,6 +582,53 @@ router.post("/reset-data", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Reset data error:", error.message);
     res.status(500).json({ success: false, error: "Unable to reset data" });
+  }
+});
+
+// ---- Owner-only: homepage content (no-code editing of the storefront's
+// custom hero/best-sellers/collections/offer blocks) ----
+
+router.get("/homepage-content", requireOwner, async (req, res) => {
+  try {
+    const content = await homepageContentStore.getHomepageContent();
+    res.json({ success: true, content });
+  } catch (error) {
+    console.error("Get homepage content error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load homepage content" });
+  }
+});
+
+router.post("/homepage-content", requireOwner, async (req, res) => {
+  try {
+    const content = req.body?.content;
+    if (!content || typeof content !== "object") {
+      return res.status(400).json({ success: false, error: "content is required" });
+    }
+
+    // Referenced product slugs are optional, but if set, they must be
+    // real — otherwise the storefront would silently show a blank card.
+    const slugsToCheck = [
+      ...(content.bestSellers?.productSlugs || []),
+      content.collections?.her?.productSlug,
+      content.collections?.him?.productSlug,
+      content.collections?.unisex?.productSlug,
+    ].filter(Boolean);
+
+    if (slugsToCheck.length > 0) {
+      const productData = await getProducts({ limit: 200 });
+      const products = productData.data || productData;
+      const knownSlugs = new Set(products.map((p) => p.slug));
+      const unknown = slugsToCheck.filter((slug) => !knownSlugs.has(slug));
+      if (unknown.length > 0) {
+        return res.status(400).json({ success: false, error: `Unknown product slug(s): ${unknown.join(", ")}` });
+      }
+    }
+
+    const saved = await homepageContentStore.saveHomepageContent(content);
+    res.json({ success: true, content: saved });
+  } catch (error) {
+    console.error("Save homepage content error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to save homepage content" });
   }
 });
 

@@ -10,6 +10,7 @@ const adminRouter = require("./routes/admin");
 const authRouter = require("./routes/auth");
 const { requireSession, meHandler } = authRouter;
 const { bootstrapOwnerFromEnv } = require("./lib/users-store");
+const { getHomepageContent } = require("./lib/homepage-content-store");
 
 const {
   getProducts,
@@ -92,6 +93,16 @@ app.get("/health", (req, res) => {
     service: "lana-chatbot-backend",
     timestamp: new Date().toISOString(),
   });
+});
+
+app.get("/api/homepage-content", async (req, res) => {
+  try {
+    const content = await getHomepageContent();
+    res.json({ success: true, content });
+  } catch (error) {
+    console.error("Homepage content error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load homepage content" });
+  }
 });
 
 app.get("/api/products", async (req, res) => {

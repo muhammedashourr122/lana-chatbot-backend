@@ -1,0 +1,1311 @@
+<style>
+/* =========================================================
+   LANA'S BEAUTY
+   HERO V5.2 — LUXURY POLISH
+   FULL WIDTH VERSION
+   (content is now populated by homepage.js from the dashboard's
+   Homepage Content panel — see data-field attributes below)
+========================================================= */
+
+.lana-v5 {
+  position: relative;
+
+  /* FULL WIDTH */
+  width: 100vw !important;
+  max-width: 100vw !important;
+
+  margin-left: calc(50% - 50vw) !important;
+  margin-right: calc(50% - 50vw) !important;
+
+  min-height: 680px;
+
+  overflow: hidden;
+  isolation: isolate;
+
+  background:
+    radial-gradient(
+      ellipse at 77% 42%,
+      rgba(255, 238, 243, .30) 0%,
+      rgba(255, 238, 243, .08) 28%,
+      transparent 52%
+    ),
+    radial-gradient(
+      ellipse at 25% 70%,
+      rgba(86, 45, 60, .14) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      115deg,
+      #845464 0%,
+      #9d6878 35%,
+      #b77f8e 67%,
+      #875869 100%
+    );
+
+  color: #fff;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+.lana-v5 *,
+.lana-v5 *::before,
+.lana-v5 *::after {
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   SUBTLE TEXTURE
+========================================================= */
+
+.lana-v5::before {
+  content: "";
+
+  position: absolute;
+
+  z-index: 3;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  opacity: .075;
+
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.42'/%3E%3C/svg%3E");
+
+  mix-blend-mode: soft-light;
+}
+
+
+/* =========================================================
+   CINEMATIC LIGHT
+========================================================= */
+
+.lana-v5-light {
+  position: absolute;
+
+  z-index: 1;
+
+  width: 720px;
+  height: 720px;
+
+  right: -170px;
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255,255,255,.17) 0%,
+      rgba(255,255,255,.07) 34%,
+      transparent 70%
+    );
+
+  filter: blur(12px);
+
+  animation:
+    lanaV5Light 12s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   INNER
+========================================================= */
+
+.lana-v5-inner {
+  position: relative;
+
+  z-index: 4;
+
+  width: min(
+    1380px,
+    calc(100% - 80px)
+  );
+
+  min-height: 680px;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   GIANT BRAND WATERMARK
+========================================================= */
+
+.lana-v5-word {
+  position: absolute;
+
+  z-index: 2;
+
+  left: -32px;
+  bottom: -12px;
+
+  white-space: nowrap;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  font-size: clamp(
+    180px,
+    24vw,
+    350px
+  );
+
+  font-weight: 800;
+
+  line-height: .69;
+
+  letter-spacing: -21px;
+
+  color: rgba(255,255,255,.055);
+
+  user-select: none;
+
+  pointer-events: none;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+========================================================= */
+
+.lana-v5-content {
+  position: absolute;
+
+  z-index: 30;
+
+  left: 6.5%;
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  width: 545px;
+}
+
+
+/* =========================================================
+   KICKER
+========================================================= */
+
+.lana-v5-kicker {
+  display: flex;
+
+  align-items: center;
+
+  gap: 13px;
+
+  margin-bottom: 24px;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 4px;
+
+  text-transform: uppercase;
+
+  color: rgba(255,255,255,.78);
+}
+
+.lana-v5-kicker::before {
+  content: "";
+
+  width: 34px;
+  height: 1px;
+
+  background:
+    rgba(255,255,255,.58);
+}
+
+
+/* =========================================================
+   HEADLINE
+========================================================= */
+
+.lana-v5-title {
+  margin: 0;
+
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+
+  font-size: clamp(
+    64px,
+    6.8vw,
+    96px
+  );
+
+  font-weight: 400;
+
+  line-height: .85;
+
+  letter-spacing: -5px;
+
+  text-rendering: geometricPrecision;
+}
+
+.lana-v5-title span {
+  display: block;
+}
+
+.lana-v5-title .soft {
+  margin-left: 58px;
+
+  font-style: italic;
+
+  color:
+    rgba(255,255,255,.88);
+}
+
+.lana-v5-title .last {
+  margin-left: 118px;
+
+  color:
+    rgba(255,255,255,.96);
+}
+
+
+/* =========================================================
+   DESCRIPTION
+========================================================= */
+
+.lana-v5-description {
+  max-width: 365px;
+
+  margin:
+    30px 0 0;
+
+  font-size: 12.5px;
+
+  line-height: 1.9;
+
+  letter-spacing: .15px;
+
+  color:
+    rgba(255,255,255,.74);
+}
+
+
+/* =========================================================
+   ACTION AREA
+========================================================= */
+
+.lana-v5-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 28px;
+
+  margin-top: 30px;
+}
+
+
+/* =========================================================
+   LUXURY CTA
+========================================================= */
+
+.lana-v5-button {
+  position: relative;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 174px;
+  height: 51px;
+
+  background:
+    #f9f4f1;
+
+  color:
+    #5a3d48;
+
+  border:
+    1px solid rgba(255,255,255,.55);
+
+  text-decoration: none;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  text-transform: uppercase;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 12px 35px
+    rgba(62,31,42,.13);
+
+  transition:
+    transform .35s ease,
+    background .35s ease,
+    color .35s ease,
+    box-shadow .35s ease;
+}
+
+.lana-v5-button::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    linear-gradient(
+      110deg,
+      transparent 25%,
+      rgba(255,255,255,.75) 48%,
+      transparent 70%
+    );
+
+  transform:
+    translateX(-120%);
+
+  transition:
+    transform .7s ease;
+}
+
+.lana-v5-button span {
+  position: relative;
+
+  z-index: 2;
+}
+
+.lana-v5-button:hover {
+  transform:
+    translateY(-3px);
+
+  background:
+    #634451;
+
+  color:
+    #fff;
+
+  box-shadow:
+    0 16px 40px
+    rgba(62,31,42,.22);
+}
+
+.lana-v5-button:hover::before {
+  transform:
+    translateX(120%);
+}
+
+
+/* =========================================================
+   CATEGORY NAV
+========================================================= */
+
+.lana-v5-categories {
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  white-space: nowrap;
+
+  font-size: 8px;
+
+  font-weight: 600;
+
+  letter-spacing: 1.8px;
+
+  text-transform: uppercase;
+
+  color:
+    rgba(255,255,255,.68);
+}
+
+.lana-v5-categories a {
+  position: relative;
+
+  color: inherit;
+
+  text-decoration: none;
+
+  transition:
+    color .25s ease;
+}
+
+.lana-v5-categories a::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: -5px;
+
+  height: 1px;
+
+  background:
+    rgba(255,255,255,.65);
+
+  transform:
+    scaleX(0);
+
+  transform-origin:
+    center;
+
+  transition:
+    transform .25s ease;
+}
+
+.lana-v5-categories a:hover {
+  color:
+    #fff;
+}
+
+.lana-v5-categories a:hover::after {
+  transform:
+    scaleX(1);
+}
+
+.lana-v5-categories i {
+  font-style: normal;
+
+  opacity: .35;
+}
+
+
+/* =========================================================
+   SILK RIBBON
+========================================================= */
+
+.lana-v5-ribbon {
+  position: absolute;
+
+  z-index: 8;
+
+  right: 4.5%;
+  top: 50%;
+
+  width: 610px;
+  height: 860px;
+
+  transform:
+    translateY(-50%)
+    rotate(-13deg);
+
+  pointer-events: none;
+
+  animation:
+    lanaV5Ribbon 12s ease-in-out infinite;
+}
+
+.lana-v5-ribbon::before {
+  content: "";
+
+  position: absolute;
+
+  width: 265px;
+  height: 930px;
+
+  left: 190px;
+  top: -35px;
+
+  border-radius:
+    48% 52% 35% 65% /
+    35% 45% 55% 65%;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255,255,255,.035),
+      rgba(255,255,255,.40),
+      rgba(244,203,213,.24),
+      rgba(255,255,255,.055)
+    );
+
+  box-shadow:
+    inset 25px 0 48px
+    rgba(255,255,255,.19),
+
+    inset -28px 0 48px
+    rgba(91,48,62,.10),
+
+    0 30px 75px
+    rgba(63,35,46,.14);
+
+  filter:
+    blur(.35px);
+}
+
+.lana-v5-ribbon::after {
+  content: "";
+
+  position: absolute;
+
+  width: 120px;
+  height: 760px;
+
+  left: 338px;
+  top: 45px;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,.31),
+      transparent
+    );
+
+  filter:
+    blur(9px);
+
+  transform:
+    rotate(7deg);
+}
+
+
+/* =========================================================
+   FLOATING FABRIC
+========================================================= */
+
+.lana-v5-fabric {
+  position: absolute;
+
+  z-index: 9;
+
+  right: 27%;
+  top: 14%;
+
+  width: 145px;
+  height: 260px;
+
+  border-radius:
+    70% 30% 65% 35% /
+    30% 60% 40% 70%;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,.23),
+      rgba(255,220,228,.065)
+    );
+
+  box-shadow:
+    0 25px 50px
+    rgba(70,36,48,.08);
+
+  filter:
+    blur(.35px);
+
+  transform:
+    rotate(27deg);
+
+  animation:
+    lanaV5Fabric 9s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   ORBIT LINES
+========================================================= */
+
+.lana-v5-orbit {
+  position: absolute;
+
+  z-index: 5;
+
+  right: -65px;
+  top: 50%;
+
+  width: 690px;
+  height: 340px;
+
+  transform:
+    translateY(-50%)
+    rotate(-18deg);
+
+  border:
+    1px solid rgba(255,255,255,.12);
+
+  border-radius: 50%;
+
+  animation:
+    lanaV5Orbit 18s ease-in-out infinite;
+}
+
+.lana-v5-orbit-two {
+  right: -115px;
+
+  width: 750px;
+  height: 440px;
+
+  opacity: .40;
+
+  transform:
+    translateY(-50%)
+    rotate(12deg);
+}
+
+
+/* =========================================================
+   PARTICLES
+========================================================= */
+
+.lana-v5-dot {
+  position: absolute;
+
+  z-index: 15;
+
+  border-radius: 50%;
+
+  background:
+    rgba(255,255,255,.72);
+
+  box-shadow:
+    0 0 20px
+    rgba(255,255,255,.25);
+}
+
+.lana-v5-dot-one {
+  width: 5px;
+  height: 5px;
+
+  right: 19%;
+  top: 24%;
+
+  animation:
+    lanaV5Dot 6s ease-in-out infinite;
+}
+
+.lana-v5-dot-two {
+  width: 3px;
+  height: 3px;
+
+  right: 12%;
+  bottom: 25%;
+
+  animation:
+    lanaV5Dot 8s ease-in-out infinite reverse;
+}
+
+.lana-v5-dot-three {
+  width: 4px;
+  height: 4px;
+
+  right: 36%;
+  bottom: 18%;
+
+  animation:
+    lanaV5Dot 7s ease-in-out infinite;
+}
+
+
+/* =========================================================
+   EDITORIAL SIDE TEXT
+========================================================= */
+
+.lana-v5-side {
+  position: absolute;
+
+  z-index: 20;
+
+  right: 0;
+  top: 50%;
+
+  transform:
+    translateY(-50%)
+    rotate(90deg);
+
+  transform-origin:
+    right center;
+
+  font-size: 7px;
+
+  letter-spacing: 4px;
+
+  text-transform: uppercase;
+
+  color:
+    rgba(255,255,255,.42);
+}
+
+
+/* =========================================================
+   BOTTOM DETAILS
+========================================================= */
+
+.lana-v5-bottom {
+  position: absolute;
+
+  z-index: 20;
+
+  left: 0;
+  right: 0;
+  bottom: 28px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-start;
+}
+
+.lana-v5-bottom-left {
+  font-size: 7px;
+
+  letter-spacing: 3px;
+
+  text-transform: uppercase;
+
+  color:
+    rgba(255,255,255,.40);
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes lanaV5Light {
+
+  0%,100% {
+    transform:
+      translateY(-50%)
+      translateX(0)
+      scale(1);
+  }
+
+  50% {
+    transform:
+      translateY(-50%)
+      translateX(-35px)
+      scale(1.08);
+  }
+}
+
+@keyframes lanaV5Ribbon {
+
+  0%,100% {
+    transform:
+      translateY(-50%)
+      rotate(-13deg)
+      translateX(0);
+  }
+
+  50% {
+    transform:
+      translateY(-51%)
+      rotate(-8deg)
+      translateX(-18px);
+  }
+}
+
+@keyframes lanaV5Fabric {
+
+  0%,100% {
+    transform:
+      rotate(27deg)
+      translate(0,0)
+      scale(1);
+  }
+
+  50% {
+    transform:
+      rotate(34deg)
+      translate(-20px,15px)
+      scale(1.04);
+  }
+}
+
+@keyframes lanaV5Orbit {
+
+  0%,100% {
+    transform:
+      translateY(-50%)
+      rotate(-18deg);
+  }
+
+  50% {
+    transform:
+      translateY(-50%)
+      rotate(-12deg)
+      scale(1.03);
+  }
+}
+
+@keyframes lanaV5Dot {
+
+  0%,100% {
+    transform:
+      translate(0,0);
+
+    opacity: .42;
+  }
+
+  50% {
+    transform:
+      translate(-12px,18px);
+
+    opacity: 1;
+  }
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1050px) {
+
+  .lana-v5 {
+    min-height: 600px;
+  }
+
+  .lana-v5-inner {
+    width:
+      calc(100% - 50px);
+
+    min-height: 600px;
+  }
+
+  .lana-v5-content {
+    left: 3%;
+  }
+
+  .lana-v5-title {
+    font-size: 68px;
+  }
+
+  .lana-v5-ribbon {
+    right: -5%;
+
+    transform:
+      translateY(-50%)
+      rotate(-13deg)
+      scale(.82);
+  }
+
+  .lana-v5-orbit {
+    right: -18%;
+
+    transform:
+      translateY(-50%)
+      rotate(-18deg)
+      scale(.82);
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 767px) {
+
+  .lana-v5 {
+    min-height: 690px;
+
+    background:
+      radial-gradient(
+        ellipse at 50% 72%,
+        rgba(255,230,236,.25),
+        transparent 38%
+      ),
+      linear-gradient(
+        160deg,
+        #8c5c6b,
+        #ae7888 55%,
+        #8d5e6e
+      );
+  }
+
+  .lana-v5-inner {
+    width: 100%;
+
+    min-height: 690px;
+  }
+
+
+  /* Giant watermark */
+
+  .lana-v5-word {
+    left: 50%;
+    bottom: 58px;
+
+    transform:
+      translateX(-50%);
+
+    font-size: 105px;
+
+    letter-spacing: -8px;
+  }
+
+
+  /* Content */
+
+  .lana-v5-content {
+    left: 0;
+    top: 92px;
+
+    transform: none;
+
+    width: 100%;
+
+    padding:
+      0 20px;
+
+    text-align: center;
+  }
+
+  .lana-v5-kicker {
+    justify-content: center;
+
+    margin-bottom: 19px;
+
+    font-size: 8px;
+
+    letter-spacing: 3px;
+  }
+
+  .lana-v5-kicker::before {
+    display: none;
+  }
+
+  .lana-v5-title {
+    font-size: 54px;
+
+    line-height: .87;
+
+    letter-spacing: -3px;
+  }
+
+  .lana-v5-title .soft {
+    margin-left: 25px;
+  }
+
+  .lana-v5-title .last {
+    margin-left: 45px;
+  }
+
+  .lana-v5-description {
+    max-width: 285px;
+
+    margin:
+      22px auto 0;
+
+    font-size: 12px;
+
+    line-height: 1.75;
+  }
+
+
+  /* Actions */
+
+  .lana-v5-actions {
+    flex-direction: column;
+
+    justify-content: center;
+
+    gap: 17px;
+
+    margin-top: 23px;
+  }
+
+  .lana-v5-categories {
+    justify-content: center;
+  }
+
+
+  /* Ribbon */
+
+  .lana-v5-ribbon {
+    right: 50%;
+
+    top: 470px;
+
+    width: 420px;
+    height: 600px;
+
+    transform:
+      translateX(50%)
+      rotate(-13deg)
+      scale(.75);
+  }
+
+  .lana-v5-ribbon::before {
+    left: 130px;
+  }
+
+  .lana-v5-ribbon::after {
+    left: 275px;
+  }
+
+
+  /* Fabric */
+
+  .lana-v5-fabric {
+    right: 13%;
+    top: 390px;
+
+    width: 75px;
+    height: 145px;
+  }
+
+
+  /* Orbit */
+
+  .lana-v5-orbit {
+    right: 50%;
+
+    top: 515px;
+
+    width: 450px;
+    height: 230px;
+
+    transform:
+      translateX(50%)
+      rotate(-18deg);
+  }
+
+  .lana-v5-orbit-two {
+    right: 50%;
+
+    width: 500px;
+    height: 290px;
+
+    transform:
+      translateX(50%)
+      rotate(12deg);
+  }
+
+
+  /* Side text */
+
+  .lana-v5-side {
+    display: none;
+  }
+
+
+  /* Bottom */
+
+  .lana-v5-bottom {
+    left: 20px;
+    right: 20px;
+    bottom: 22px;
+  }
+
+  .lana-v5-bottom-left {
+    font-size: 7px;
+  }
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 400px) {
+
+  .lana-v5 {
+    min-height: 650px;
+  }
+
+  .lana-v5-inner {
+    min-height: 650px;
+  }
+
+  .lana-v5-content {
+    top: 86px;
+  }
+
+  .lana-v5-title {
+    font-size: 48px;
+  }
+
+  .lana-v5-description {
+    font-size: 11px;
+  }
+
+  .lana-v5-ribbon {
+    top: 445px;
+
+    transform:
+      translateX(50%)
+      rotate(-13deg)
+      scale(.66);
+  }
+
+  .lana-v5-orbit {
+    top: 495px;
+
+    transform:
+      translateX(50%)
+      rotate(-18deg)
+      scale(.85);
+  }
+
+  .lana-v5-word {
+    font-size: 88px;
+  }
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .lana-v5 *,
+  .lana-v5 *::before,
+  .lana-v5 *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+</style>
+
+
+<section class="lana-v5">
+
+  <div class="lana-v5-light"></div>
+
+  <div class="lana-v5-inner">
+
+    <!-- Giant background watermark -->
+
+    <div class="lana-v5-word">
+      LANA'S
+    </div>
+
+
+    <!-- Abstract silk -->
+
+    <div class="lana-v5-ribbon"></div>
+
+    <div class="lana-v5-fabric"></div>
+
+
+    <!-- Editorial orbit -->
+
+    <div class="lana-v5-orbit"></div>
+
+    <div class="lana-v5-orbit lana-v5-orbit-two"></div>
+
+
+    <!-- Floating particles -->
+
+    <div class="lana-v5-dot lana-v5-dot-one"></div>
+
+    <div class="lana-v5-dot lana-v5-dot-two"></div>
+
+    <div class="lana-v5-dot lana-v5-dot-three"></div>
+
+
+    <!-- Main content -->
+
+    <div class="lana-v5-content">
+
+      <div class="lana-v5-kicker" data-field="hero-kicker">
+        The Art Of Fragrance
+      </div>
+
+
+      <h1 class="lana-v5-title">
+
+        <span data-field="hero-title-1">
+          Wear
+        </span>
+
+        <span class="soft" data-field="hero-title-2">
+          your
+        </span>
+
+        <span class="last" data-field="hero-title-3">
+          feeling.
+        </span>
+
+      </h1>
+
+
+      <p class="lana-v5-description" data-field="hero-description">
+        Fragrance designed to become part
+        of the way you express yourself.
+      </p>
+
+
+      <div class="lana-v5-actions">
+
+        <a
+          href="/collections/all"
+          class="lana-v5-button"
+          data-field="hero-button-link"
+        >
+          <span data-field="hero-button-text">
+            Explore Scents
+          </span>
+        </a>
+
+
+        <div class="lana-v5-categories">
+
+          <a href="/collections/for-her">
+            For Her
+          </a>
+
+          <i>·</i>
+
+          <a href="/collections/for-him">
+            For Him
+          </a>
+
+          <i>·</i>
+
+          <a href="/collections/unisex">
+            Unisex
+          </a>
+
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- Editorial side text -->
+
+    <div class="lana-v5-side">
+      Lana's Beauty · Eau de Parfum · Body Mist
+    </div>
+
+
+    <!-- Bottom details -->
+
+    <div class="lana-v5-bottom">
+
+      <div class="lana-v5-bottom-left">
+        Made to be remembered
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+<script src="https://lana-chatbot-backend.onrender.com/storefront/homepage.js"></script>
