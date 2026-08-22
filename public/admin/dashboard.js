@@ -452,6 +452,7 @@ function renderBostaLive(orderId, result) {
     (result.cod != null ? '<div style="margin-bottom:6px;"><strong>COD amount:</strong> ' + money(result.cod) + "</div>" : "") +
     (result.shipmentFees != null ? '<div style="margin-bottom:6px;"><strong>Bosta shipping fee (actual):</strong> ' + money(result.shipmentFees) + "</div>" : "") +
     (result.numberOfAttempts != null ? '<div style="margin-bottom:6px;"><strong>Delivery attempts:</strong> ' + result.numberOfAttempts + "</div>" : "") +
+    (result.nextCashoutDate ? '<div style="margin-bottom:6px;"><strong>Next COD cashout:</strong> ' + new Date(result.nextCashoutDate).toLocaleDateString() + "</div>" : "") +
     (result.slaBreached ? '<div style="margin-bottom:6px;"><span class="badge attn">SLA breached</span></div>' : "") +
     '<div style="margin:8px 0 2px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;">Timeline</div>' +
     '<ul style="margin:0;padding-left:18px;">' + timelineHtml + "</ul>" +

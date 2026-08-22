@@ -431,6 +431,7 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       numberOfAttempts: delivery.numberOfAttempts,
       isDelayed: delivery.isDelayed,
       slaBreached: Boolean(delivery.sla?.e2eSla?.isExceededE2ESla || delivery.sla?.orderSla?.isExceededOrderSla),
+      nextCashoutDate: isModerator(req) ? undefined : delivery.wallet?.cashout?.next_cashout_date,
       stateLog,
     });
   } catch (error) {
