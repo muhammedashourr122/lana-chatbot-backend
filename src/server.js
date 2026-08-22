@@ -11,6 +11,7 @@ const authRouter = require("./routes/auth");
 const { requireSession, meHandler } = authRouter;
 const { bootstrapOwnerFromEnv } = require("./lib/users-store");
 const { getHomepageContent } = require("./lib/homepage-content-store");
+const { getAwbPdfByTrackingNumber } = require("./lib/bosta");
 
 const {
   getProducts,
@@ -271,6 +272,23 @@ app.get("/api/orders-by-phone", async (req, res) => {
   } catch (error) {
     console.error("Orders by phone error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load orders" });
+  }
+});
+
+app.get("/admin/awb/:orderId", async (req, res) => {
+  const events = await getTrackingEvents(req.params.orderId);
+  const trackingNumber = events.length > 0 ? events[events.length - 1].trackingNumber : null;
+  if (!trackingNumber) {
+    return res.status(404).send("This order has no Bosta delivery yet");
+  }
+
+  try {
+    const pdfBuffer = await getAwbPdfByTrackingNumber(trackingNumber);
+    res.set("Content-Type", "application/pdf");
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("AWB fetch error:", error.response?.data || error.message);
+    res.status(502).send("Unable to fetch AWB from Bosta");
   }
 });
 
