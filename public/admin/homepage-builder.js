@@ -313,8 +313,8 @@ function init() {
       }
 
       return Promise.all([
-        fetch("/api/admin/homepage-content").then((r) => r.json()),
-        fetch("/api/products?limit=200").then((r) => r.json()),
+        fetch("/api/admin/homepage-content", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/products?limit=200", { cache: "no-store" }).then((r) => r.json()),
       ]).then(([contentData, productsData]) => {
         if (!contentData.success) {
           document.getElementById("hb-panel").innerHTML = '<p class="empty">Failed to load homepage content.</p>';

@@ -100,6 +100,7 @@ app.get("/health", (req, res) => {
 
 app.get("/api/homepage-content", async (req, res) => {
   try {
+    res.set("Cache-Control", "no-store");
     const content = await getHomepageContent();
     res.json({ success: true, content });
   } catch (error) {

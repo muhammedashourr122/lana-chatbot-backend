@@ -207,8 +207,8 @@
 
   function init() {
     Promise.all([
-      fetch(CONTENT_API).then(function (r) { return r.json(); }),
-      fetch(PRODUCTS_API).then(function (r) { return r.json(); }),
+      fetch(CONTENT_API, { cache: "no-store" }).then(function (r) { return r.json(); }),
+      fetch(PRODUCTS_API, { cache: "no-store" }).then(function (r) { return r.json(); }),
     ])
       .then(function (results) {
         var contentRes = results[0];
