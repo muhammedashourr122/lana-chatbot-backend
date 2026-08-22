@@ -141,6 +141,13 @@ function detectThanks(text) {
   return ["شكرا", "متشكر", "تسلم", "thanks", "thank you", "thx"].some((w) => normalized.includes(w));
 }
 
+function detectOrderStatusQuestion(text) {
+  const normalized = normalizeText(text);
+  return normalized.includes("طلب") || ["order status", "track my order", "where is my order", "track order"].some(
+    (w) => normalized.includes(w)
+  );
+}
+
 function detectOffersQuestion(text) {
   const normalized = normalizeText(text);
   return ["عروض", "عرض", "خصم", "كوبون", "كود خصم", "offer", "discount", "coupon", "promo"].some(
@@ -318,6 +325,20 @@ async function chat(message) {
     return {
       success: true,
       message: reply,
+      intent: "order_status",
+      category: null,
+      budget: null,
+      count: 0,
+      products: [],
+    };
+  }
+
+  // Asked about order status but no phone number yet — ask for it,
+  // instead of falling through to "no matching products."
+  if (detectOrderStatusQuestion(text)) {
+    return {
+      success: true,
+      message: "قوليلي رقم الموبايل اللي طلبتي بيه وأنا هجيبلك حالة الطلب.",
       intent: "order_status",
       category: null,
       budget: null,
