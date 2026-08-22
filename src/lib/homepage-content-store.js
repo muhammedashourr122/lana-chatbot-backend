@@ -58,6 +58,19 @@ const DEFAULT_HOMEPAGE_CONTENT = {
       buttonLink: "https://www.lana-beauty.com/collections/all",
     },
   },
+  paymentMethods: {
+    items: [
+      { id: "visa", kind: "logo", enabled: true, label: "Visa", imageUrl: "https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/visa.svg" },
+      { id: "mastercard", kind: "logo", enabled: true, label: "Mastercard", imageUrl: "https://raw.githubusercontent.com/datatrans/payment-logos/master/assets/cards/mastercard.svg" },
+      { id: "meeza", kind: "logo", enabled: true, label: "Meeza", imageUrl: "https://meezaprod-gmh3hjdscxfsekd6.northeurope-01.azurewebsites.net/wp-content/uploads/2019/07/cropped-fav.png" },
+      { id: "instapay", kind: "logo", enabled: true, label: "InstaPay", imageUrl: "https://upload.wikimedia.org/wikipedia/ar/archive/f/fa/20231126094028%21%D8%A7%D9%86%D8%B3%D8%AA%D8%A7%D8%A8%D8%A7%D9%8A.png" },
+      { id: "souhoola", kind: "logo", enabled: true, label: "Souhoola", imageUrl: "https://souhoola.com/assets/img/Souhoola/logo.svg" },
+      { id: "tru", kind: "logo", enabled: true, label: "TRU", imageUrl: "https://alalamelyoum.co/wp-content/uploads/2025/01/39495e60ca14e5a01352ef73aa40e437.webp" },
+      { id: "aman", kind: "logo", enabled: true, label: "Aman", imageUrl: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR0kPIve_VqGU3fJ0Yv6iDquuyE4tofzZP768NqUmIaflmeemKiwsbYKU4&s=10" },
+      { id: "installments", kind: "installments", enabled: true, label: "BANK INSTALLMENTS" },
+      { id: "cod", kind: "cod", enabled: true, label: "CASH ON DELIVERY" },
+    ],
+  },
   brand: {
     kicker: "Why Lana's Beauty",
     small: "The art of fragrance",

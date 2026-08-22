@@ -121,6 +121,12 @@ const SECTIONS = [
       { key: "offers.box2.buttonLink", label: "Button link", type: "text" },
     ],
   },
+  {
+    id: "paymentMethods",
+    label: "Payment Methods",
+    hint: "Shown in the footer strip and on every product page. Show/hide, reorder, add, or remove badges.",
+    custom: true,
+  },
 ];
 
 let content = null;
@@ -166,9 +172,84 @@ function renderSidebar() {
   });
 }
 
+function slugify(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "item";
+}
+
+function paymentRowHtml(item, i, total) {
+  const isSpecial = item.kind === "installments" || item.kind === "cod";
+  return '<div class="hb-pm-row" data-index="' + i + '">' +
+    '<label class="hb-pm-enabled"><input type="checkbox" class="hb-pm-toggle" ' + (item.enabled ? "checked" : "") + '></label>' +
+    '<div class="hb-pm-fields">' +
+      '<input type="text" class="hb-pm-label" placeholder="Label" value="' + esc(item.label || "") + '">' +
+      (isSpecial
+        ? '<span class="hb-pm-kind-tag">' + esc(item.kind) + "</span>"
+        : '<input type="text" class="hb-pm-image" placeholder="Logo image URL" value="' + esc(item.imageUrl || "") + '">') +
+    "</div>" +
+    '<div class="hb-pm-actions">' +
+      '<button type="button" class="hb-pm-up" ' + (i === 0 ? "disabled" : "") + ' title="Move up">&uarr;</button>' +
+      '<button type="button" class="hb-pm-down" ' + (i === total - 1 ? "disabled" : "") + ' title="Move down">&darr;</button>' +
+      '<button type="button" class="hb-pm-delete" title="Remove">&times;</button>' +
+    "</div>" +
+  "</div>";
+}
+
+function renderPaymentMethodsPanel(panel) {
+  if (!content.paymentMethods) content.paymentMethods = { items: [] };
+  const items = content.paymentMethods.items;
+
+  panel.innerHTML =
+    '<h2 class="hb-section-title">Payment Methods</h2>' +
+    '<p class="hb-section-hint">Shown in the footer strip and on every product page. Show/hide, reorder, add, or remove badges.</p>' +
+    '<div class="hb-pm-list">' + items.map((item, i) => paymentRowHtml(item, i, items.length)).join("") + "</div>" +
+    '<button type="button" id="hb-pm-add" class="btn" style="margin-top:14px;background:var(--card);border:1px solid var(--accent);color:var(--accent);">+ Add Payment Method</button>';
+
+  panel.querySelectorAll(".hb-pm-row").forEach((row) => {
+    const i = Number(row.getAttribute("data-index"));
+
+    row.querySelector(".hb-pm-toggle").addEventListener("change", (e) => {
+      items[i].enabled = e.target.checked;
+    });
+    row.querySelector(".hb-pm-label").addEventListener("input", (e) => {
+      items[i].label = e.target.value;
+    });
+    const imageInput = row.querySelector(".hb-pm-image");
+    if (imageInput) {
+      imageInput.addEventListener("input", (e) => {
+        items[i].imageUrl = e.target.value;
+      });
+    }
+    row.querySelector(".hb-pm-up").addEventListener("click", () => {
+      if (i === 0) return;
+      [items[i - 1], items[i]] = [items[i], items[i - 1]];
+      renderPaymentMethodsPanel(panel);
+    });
+    row.querySelector(".hb-pm-down").addEventListener("click", () => {
+      if (i === items.length - 1) return;
+      [items[i + 1], items[i]] = [items[i], items[i + 1]];
+      renderPaymentMethodsPanel(panel);
+    });
+    row.querySelector(".hb-pm-delete").addEventListener("click", () => {
+      items.splice(i, 1);
+      renderPaymentMethodsPanel(panel);
+    });
+  });
+
+  panel.querySelector("#hb-pm-add").addEventListener("click", () => {
+    items.push({ id: slugify("method-" + Date.now()), kind: "logo", enabled: true, label: "New Method", imageUrl: "" });
+    renderPaymentMethodsPanel(panel);
+  });
+}
+
 function renderPanel() {
   const panel = document.getElementById("hb-panel");
   const section = SECTIONS.find((s) => s.id === activeSectionId);
+
+  if (section.custom === true && section.id === "paymentMethods") {
+    renderPaymentMethodsPanel(panel);
+    return;
+  }
+
   panel.innerHTML =
     '<h2 class="hb-section-title">' + esc(section.label) + "</h2>" +
     '<p class="hb-section-hint">' + esc(section.hint) + "</p>" +

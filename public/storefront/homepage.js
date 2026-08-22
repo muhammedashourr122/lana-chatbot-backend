@@ -34,6 +34,72 @@
     return "https://www.lana-beauty.com/products/" + slug;
   }
 
+  var PAYMENT_LOGO_CLASS = {
+    visa: "visa", mastercard: "mastercard", meeza: "meeza", instapay: "instapay",
+    souhoola: "souhoola", tru: "tru", aman: "aman",
+  };
+
+  function buildPaymentItem(item, prefix) {
+    if (item.kind === "installments") {
+      var el = document.createElement("div");
+      el.className = "lana-" + prefix + "payment-item installments";
+      var icon = document.createElement("span");
+      icon.className = "lana-" + prefix + "installment-icon";
+      el.appendChild(icon);
+
+      if (prefix) {
+        var textSpan = document.createElement("span");
+        textSpan.innerHTML = "BANK<br>INSTALLMENTS";
+        el.appendChild(textSpan);
+      } else {
+        var textWrap = document.createElement("span");
+        textWrap.className = "lana-installment-text";
+        var main = document.createElement("span");
+        main.className = "lana-installment-main";
+        main.innerHTML = "BANK<br>INSTALLMENTS";
+        textWrap.appendChild(main);
+        el.appendChild(textWrap);
+      }
+      return el;
+    }
+
+    if (item.kind === "cod") {
+      var el2 = document.createElement("div");
+      el2.className = "lana-" + prefix + "payment-cod";
+      var icon2 = document.createElement("span");
+      icon2.className = "lana-" + prefix + "cash-icon";
+      el2.appendChild(icon2);
+      var span2 = document.createElement("span");
+      span2.innerHTML = "CASH<br>ON DELIVERY";
+      el2.appendChild(span2);
+      return el2;
+    }
+
+    var wrap = document.createElement("div");
+    var cls = PAYMENT_LOGO_CLASS[item.id] || "";
+    wrap.className = ("lana-" + prefix + "payment-item " + cls).trim();
+    var img = document.createElement("img");
+    img.src = item.imageUrl || "";
+    img.alt = item.label || "";
+    wrap.appendChild(img);
+    return wrap;
+  }
+
+  function renderPaymentMethods(items) {
+    if (!items || !items.length) return;
+    var enabled = items.filter(function (i) { return i.enabled; });
+
+    document.querySelectorAll(".lana-payment-methods").forEach(function (container) {
+      container.innerHTML = "";
+      enabled.forEach(function (item) { container.appendChild(buildPaymentItem(item, "")); });
+    });
+
+    document.querySelectorAll(".lana-gallery-payment-methods").forEach(function (container) {
+      container.innerHTML = "";
+      enabled.forEach(function (item) { container.appendChild(buildPaymentItem(item, "gallery-")); });
+    });
+  }
+
   function populate(content, products) {
     if (content.hero) {
       setText("hero-kicker", content.hero.kicker);
@@ -116,6 +182,17 @@
       setText("brand-value3-text", b.value3Text);
       setText("brand-bottom-text", b.bottomText);
     }
+
+    if (content.paymentMethods) {
+      renderPaymentMethods(content.paymentMethods.items);
+    }
+  }
+
+  function pageHasKnownElements() {
+    return (
+      document.querySelectorAll("[data-field]").length > 0 ||
+      document.querySelectorAll(".lana-payment-methods, .lana-gallery-payment-methods").length > 0
+    );
   }
 
   var fetchedData = null;
@@ -123,7 +200,7 @@
 
   function tryPopulate() {
     if (populated || !fetchedData) return;
-    if (document.querySelectorAll("[data-field]").length === 0) return;
+    if (!pageHasKnownElements()) return;
     populate(fetchedData.content, fetchedData.products);
     populated = true;
   }
