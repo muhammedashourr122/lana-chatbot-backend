@@ -96,6 +96,16 @@
     }
   }
 
+  var fetchedData = null;
+  var populated = false;
+
+  function tryPopulate() {
+    if (populated || !fetchedData) return;
+    if (document.querySelectorAll("[data-field]").length === 0) return;
+    populate(fetchedData.content, fetchedData.products);
+    populated = true;
+  }
+
   function init() {
     Promise.all([
       fetch(CONTENT_API).then(function (r) { return r.json(); }),
@@ -105,12 +115,39 @@
         var contentRes = results[0];
         var productsRes = results[1];
         if (!contentRes.success) return;
-        var products = productsRes.data || productsRes || [];
-        populate(contentRes.content, products);
+        fetchedData = {
+          content: contentRes.content,
+          products: productsRes.data || productsRes || [],
+        };
+        tryPopulate();
       })
       .catch(function (e) {
         console.error("Lana homepage content error:", e);
       });
+
+    // The Easy Orders page builder can render these Custom HTML
+    // sections into the DOM after this script has already run (async
+    // client-side rendering), so a single one-shot pass on load isn't
+    // reliable — watch for the placeholder elements to actually show
+    // up and populate as soon as they do, same pattern already used
+    // elsewhere on this storefront for the same reason.
+    var observer = new MutationObserver(function () {
+      tryPopulate();
+      if (populated) observer.disconnect();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Also retry a few times on a plain timer as a fallback, in case
+    // the sections are added in a way the observer doesn't catch.
+    var attempts = 0;
+    var interval = setInterval(function () {
+      attempts++;
+      tryPopulate();
+      if (populated || attempts >= 20) {
+        clearInterval(interval);
+        observer.disconnect();
+      }
+    }, 500);
   }
 
   if (document.readyState === "loading") {
