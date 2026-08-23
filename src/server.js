@@ -110,7 +110,7 @@ function bundleFiles(files, contentType) {
   };
 }
 
-app.get("/storefront/bundle.css", bundleFiles(["style.css", "homepage.css"], "text/css"));
+app.get("/storefront/bundle.css", bundleFiles(["style.css", "chatbot.css", "homepage.css"], "text/css"));
 app.get("/storefront/bundle.js", bundleFiles(["script.js", "chatbot.js", "homepage.js"], "application/javascript"));
 
 // Storefront CSS/JS overrides at a permanent URL — paste these into Easy

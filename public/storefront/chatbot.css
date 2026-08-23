@@ -467,7 +467,7 @@
   background: linear-gradient(180deg, var(--lana-brand) 0%, var(--lana-brand-dark) 100%);
 }
 
-.lana-offer-title {
+.lana-chat-offer-title {
   font-size: 12.5px;
 
   font-weight: 600;
@@ -481,7 +481,7 @@
   text-align: left;
 }
 
-.lana-offer-code {
+.lana-chat-offer-code {
   display: inline-flex;
 
   align-items: center;
@@ -503,7 +503,7 @@
   direction: ltr;
 }
 
-.lana-offer-note {
+.lana-chat-offer-note {
   margin-top: 6px;
 
   font-size: 9px;

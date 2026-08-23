@@ -1166,7 +1166,7 @@
 
           <div class="lana-offer-card">
 
-            <div class="lana-offer-title">
+            <div class="lana-chat-offer-title">
 
               BUY 3 GET 2
               + FREE SHIPPING
@@ -1174,7 +1174,7 @@
             </div>
 
 
-            <div class="lana-offer-code">
+            <div class="lana-chat-offer-code">
 
               USE CODE: EXPLORE5
 
@@ -1187,7 +1187,7 @@
 
           <div class="lana-offer-card">
 
-            <div class="lana-offer-title">
+            <div class="lana-chat-offer-title">
 
               FREE SHIPPING
               ON ORDERS OVER EGP 999
@@ -1201,7 +1201,7 @@
 
           <div class="lana-offer-card">
 
-            <div class="lana-offer-title">
+            <div class="lana-chat-offer-title">
 
               BUY 2 OR MORE
               & SAVE 10%
@@ -1209,7 +1209,7 @@
             </div>
 
 
-            <div class="lana-offer-code">
+            <div class="lana-chat-offer-code">
 
               USE CODE: SAVE10
 
