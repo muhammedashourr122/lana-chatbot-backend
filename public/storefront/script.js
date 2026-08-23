@@ -245,14 +245,30 @@
 
   /* =======================================================
      SCENT FINDER QUIZ
-     5 lifestyle questions, each option nudging toward one of
-     the 5 real products (every question offers all 5 products
-     exactly once as an option, so after 5 answers the product
-     with the most picks wins — no complex weighting needed).
-     Result card shows live price/image from the catalog API;
-     tagline/traits/moment copy is authored, grounded in each
-     product's actual listed scent notes.
+     Gender gate first (For Her / For Him / Unisex), pulled from
+     the real catalog categories — so a product never appears as
+     a match outside the category it's actually listed under
+     (e.g. Shadow Noir is For Him only, never shown to a "For
+     Her" answer). Remaining lifestyle questions are filtered to
+     only that gender's real products, then simple point-tallying
+     picks the winner. Result card shows live price/image from
+     the catalog API; tagline/traits/moment copy is authored,
+     grounded in each product's actual listed scent notes.
      ======================================================= */
+
+  // From /api/catalog/category/{for-her,for-him,unisex} — Amber Nights
+  // is the one product listed under all three.
+  var GENDER_PRODUCTS = {
+    her: ["body-splash-pure-skin", "body-splash-pink-shadow", "body-splash-ruby-mist", "body-splash-amber-nights"],
+    him: ["body-splash-shadow-noir", "body-splash-amber-nights"],
+    unisex: ["body-splash-amber-nights"],
+  };
+
+  var GENDER_OPTIONS = [
+    { label: "For Her", key: "her" },
+    { label: "For Him", key: "him" },
+    { label: "Unisex", key: "unisex" },
+  ];
 
   var SCENT_PERSONAS = {
     "body-splash-amber-nights": {
@@ -299,53 +315,33 @@
 
   var SCENT_QUIZ_QUESTIONS = [
     {
-      question: "You just woke up. What's the first thing you feel?",
+      question: "Pick the moment you'd want to smell incredible in.",
       options: [
-        { label: "Buzzing. I want to get into the day already.", slug: "body-splash-ruby-mist" },
-        { label: "Clear-headed. I need a quiet minute before the noise.", slug: "body-splash-pure-skin" },
-        { label: "Still half-dreaming, somewhere soft and romantic.", slug: "body-splash-pink-shadow" },
-        { label: "Cosy. Five more minutes under the covers.", slug: "body-splash-amber-nights" },
-        { label: "Ready. Today's mine and I know it.", slug: "body-splash-shadow-noir" },
+        { label: "A slow night in — candles lit, no plans.", slug: "body-splash-amber-nights" },
+        { label: "A regular day — errands, coffee, life as usual.", slug: "body-splash-pure-skin" },
+        { label: "Brunch with your favorite people.", slug: "body-splash-pink-shadow" },
+        { label: "Walking into a room and owning it.", slug: "body-splash-shadow-noir" },
+        { label: "A spontaneous trip with your best friend.", slug: "body-splash-ruby-mist" },
       ],
     },
     {
-      question: "A whole day to yourself. Where does it go?",
+      question: "Which note pulls you in the most?",
       options: [
-        { label: "Somewhere I've never been.", slug: "body-splash-ruby-mist" },
-        { label: "Moving — a workout, a long walk, anything that wakes me up.", slug: "body-splash-shadow-noir" },
-        { label: "Shopping, then out with the girls.", slug: "body-splash-pink-shadow" },
-        { label: "A film, a blanket, and total quiet.", slug: "body-splash-amber-nights" },
-        { label: "A quiet walk and some fresh air.", slug: "body-splash-pure-skin" },
+        { label: "Warm amber and spice.", slug: "body-splash-amber-nights" },
+        { label: "Soft musk with a hint of fruit.", slug: "body-splash-pure-skin" },
+        { label: "Sparkling white florals.", slug: "body-splash-pink-shadow" },
+        { label: "Woody, refined spice.", slug: "body-splash-shadow-noir" },
+        { label: "Bright, juicy pomegranate.", slug: "body-splash-ruby-mist" },
       ],
     },
     {
-      question: "Which scent pulls you in?",
+      question: "If someone described your energy in one line, it'd be:",
       options: [
-        { label: "Fresh pomegranate, bright and juicy.", slug: "body-splash-ruby-mist" },
-        { label: "Warm vanilla and amber that feels like a hug.", slug: "body-splash-amber-nights" },
-        { label: "Sparkling freshness and soft white florals.", slug: "body-splash-pink-shadow" },
-        { label: "Refined spice and warm woods.", slug: "body-splash-shadow-noir" },
-        { label: "Juicy fruit with a soft, clean musk.", slug: "body-splash-pure-skin" },
-      ],
-    },
-    {
-      question: "How would your best friend describe you?",
-      options: [
-        { label: "Fun and full of energy — she makes everyone laugh.", slug: "body-splash-ruby-mist" },
-        { label: "Bold and confident. Impossible to miss.", slug: "body-splash-shadow-noir" },
-        { label: "Warm and calm. She makes people feel safe.", slug: "body-splash-amber-nights" },
-        { label: "Soft-spoken and romantic, always noticing beauty.", slug: "body-splash-pink-shadow" },
-        { label: "Calm, clean, everything in its place.", slug: "body-splash-pure-skin" },
-      ],
-    },
-    {
-      question: "When do you feel most like yourself?",
-      options: [
-        { label: "Out at night, being the main character.", slug: "body-splash-shadow-noir" },
-        { label: "On holiday, somewhere sunny and new.", slug: "body-splash-ruby-mist" },
-        { label: "Around a table with friends, somewhere new.", slug: "body-splash-pink-shadow" },
-        { label: "Calm, clean, everything in its place.", slug: "body-splash-pure-skin" },
-        { label: "Daydreaming, in a world of my own.", slug: "body-splash-amber-nights" },
+        { label: "Steady and comforting — never in a rush.", slug: "body-splash-amber-nights" },
+        { label: "Effortless. Doesn't try, just is.", slug: "body-splash-pure-skin" },
+        { label: "Soft-spoken, with a romantic streak.", slug: "body-splash-pink-shadow" },
+        { label: "Impossible to ignore.", slug: "body-splash-shadow-noir" },
+        { label: "Always the one starting something fun.", slug: "body-splash-ruby-mist" },
       ],
     },
   ];
@@ -362,12 +358,61 @@
     host.style.cssText = "max-width:520px;margin:24px auto 0;font-family:inherit;";
     pageContent.insertAdjacentElement("afterend", host);
 
+    var selectedGender = null;
+    var questions = [];
     var current = 0;
     var scores = {};
     var answered = [];
 
+    function renderGenderStep() {
+      var html =
+        '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#8b7d82;margin-bottom:14px;">Step 1</div>' +
+        '<h2 style="font-size:20px;font-weight:700;color:#211c1f;margin:0 0 20px;font-family:Georgia,\'Times New Roman\',serif;">Who are we finding a scent for?</h2>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;">';
+
+      GENDER_OPTIONS.forEach(function (opt, i) {
+        html +=
+          '<button type="button" class="lana-scent-gender-btn" data-gender-index="' + i + '" ' +
+            'style="cursor:pointer;text-align:left;padding:14px 16px;border:1.5px solid #ece1dc;' +
+            'border-radius:12px;background:#fff;font-size:13px;font-weight:600;color:#211c1f;transition:border-color .2s;">' +
+            opt.label +
+          '</button>';
+      });
+
+      html += '</div>';
+      host.innerHTML = html;
+
+      host.querySelectorAll(".lana-scent-gender-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var gender = GENDER_OPTIONS[Number(btn.getAttribute("data-gender-index"))].key;
+          startQuizForGender(gender);
+        });
+      });
+    }
+
+    function startQuizForGender(gender) {
+      selectedGender = gender;
+      var candidates = GENDER_PRODUCTS[gender];
+
+      if (candidates.length === 1) {
+        renderResult(candidates[0]);
+        return;
+      }
+
+      questions = SCENT_QUIZ_QUESTIONS.map(function (q) {
+        return {
+          question: q.question,
+          options: q.options.filter(function (o) { return candidates.indexOf(o.slug) !== -1; }),
+        };
+      });
+      current = 0;
+      scores = {};
+      answered = [];
+      renderQuestion();
+    }
+
     function renderProgress() {
-      var total = SCENT_QUIZ_QUESTIONS.length;
+      var total = questions.length;
       var bars = "";
       for (var i = 0; i < total; i++) {
         var filled = i <= current;
@@ -383,7 +428,7 @@
     }
 
     function renderQuestion() {
-      var q = SCENT_QUIZ_QUESTIONS[current];
+      var q = questions[current];
       var html = renderProgress() +
         '<h2 style="font-size:20px;font-weight:700;color:#211c1f;margin:0 0 20px;font-family:Georgia,\'Times New Roman\',serif;">' + q.question + '</h2>' +
         '<div style="display:flex;flex-direction:column;gap:10px;">';
@@ -401,14 +446,13 @@
       html += '</div>';
 
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;">';
-      html += current > 0
-        ? '<button type="button" id="lana-scent-back" style="background:none;border:1.5px solid #ece1dc;color:#211c1f;border-radius:999px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;">Back</button>'
-        : '<span></span>';
+      html +=
+        '<button type="button" id="lana-scent-back" style="background:none;border:1.5px solid #ece1dc;color:#211c1f;border-radius:999px;padding:9px 20px;font-size:12px;font-weight:700;cursor:pointer;">Back</button>';
       var hasAnswer = answered[current] != null;
       html +=
         '<button type="button" id="lana-scent-next" ' + (hasAnswer ? "" : "disabled") + ' ' +
         'style="background:' + (hasAnswer ? "#6C4452" : "#d8c7cd") + ';color:#fff;border:none;border-radius:999px;padding:10px 26px;font-size:12px;font-weight:700;cursor:' + (hasAnswer ? "pointer" : "default") + ';">' +
-        (current === SCENT_QUIZ_QUESTIONS.length - 1 ? "See your scent" : "Next") +
+        (current === questions.length - 1 ? "See your scent" : "Next") +
         '</button>';
       html += '</div>';
 
@@ -421,13 +465,14 @@
         });
       });
 
-      var backBtn = document.getElementById("lana-scent-back");
-      if (backBtn) {
-        backBtn.addEventListener("click", function () {
+      document.getElementById("lana-scent-back").addEventListener("click", function () {
+        if (current > 0) {
           current--;
           renderQuestion();
-        });
-      }
+        } else {
+          renderGenderStep();
+        }
+      });
 
       var nextBtn = document.getElementById("lana-scent-next");
       if (nextBtn && hasAnswer) {
@@ -435,11 +480,11 @@
           var chosenSlug = q.options[answered[current]].slug;
           scores[chosenSlug] = (scores[chosenSlug] || 0) + 1;
 
-          if (current < SCENT_QUIZ_QUESTIONS.length - 1) {
+          if (current < questions.length - 1) {
             current++;
             renderQuestion();
           } else {
-            renderResult();
+            renderResult(pickWinningSlug());
           }
         });
       }
@@ -457,8 +502,7 @@
       return bestSlug;
     }
 
-    function renderResult() {
-      var slug = pickWinningSlug();
+    function renderResult(slug) {
       var persona = SCENT_PERSONAS[slug];
 
       host.innerHTML =
@@ -489,10 +533,8 @@
         '</div>';
 
       document.getElementById("lana-scent-retry").addEventListener("click", function () {
-        current = 0;
-        scores = {};
-        answered = [];
-        renderQuestion();
+        selectedGender = null;
+        renderGenderStep();
       });
 
       fetch(PRODUCTS_API)
@@ -514,7 +556,7 @@
         .catch(function () {});
     }
 
-    renderQuestion();
+    renderGenderStep();
   }
 
   /* =======================================================
