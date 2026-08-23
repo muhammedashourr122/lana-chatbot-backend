@@ -87,10 +87,36 @@ app.get("/admin/homepage-builder", (req, res) => {
 });
 app.use("/admin", express.static(path.join(__dirname, "../public/admin")));
 
+// Combined bundles — one <link>/<script> tag in the head-code box instead
+// of five. Concatenated live from the individual files on every request
+// (cheap: a handful of small text files), so editing script.js/chatbot.js/
+// homepage.js/style.css/homepage.css and redeploying updates the bundle
+// automatically — nothing to manually re-merge.
+const STOREFRONT_DIR = path.join(__dirname, "../public/storefront");
+const fs = require("fs");
+
+function bundleFiles(files, contentType) {
+  return (req, res) => {
+    try {
+      const combined = files
+        .map((f) => fs.readFileSync(path.join(STOREFRONT_DIR, f), "utf8"))
+        .join("\n\n");
+      res.set("Content-Type", contentType);
+      res.send(combined);
+    } catch (error) {
+      console.error("Bundle error:", error.message);
+      res.status(500).send("/* bundle error */");
+    }
+  };
+}
+
+app.get("/storefront/bundle.css", bundleFiles(["style.css", "homepage.css"], "text/css"));
+app.get("/storefront/bundle.js", bundleFiles(["script.js", "chatbot.js", "homepage.js"], "application/javascript"));
+
 // Storefront CSS/JS overrides at a permanent URL — paste these into Easy
 // Orders' head-code box ONCE; from then on, editing the files here and
 // deploying updates them automatically, no re-upload/re-paste needed.
-app.use("/storefront", express.static(path.join(__dirname, "../public/storefront")));
+app.use("/storefront", express.static(STOREFRONT_DIR));
 
 app.get("/health", (req, res) => {
   res.json({
