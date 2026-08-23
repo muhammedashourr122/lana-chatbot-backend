@@ -102,6 +102,7 @@ function bundleFiles(files, contentType) {
         .map((f) => fs.readFileSync(path.join(STOREFRONT_DIR, f), "utf8"))
         .join("\n\n");
       res.set("Content-Type", contentType);
+      res.set("Cache-Control", "no-store");
       res.send(combined);
     } catch (error) {
       console.error("Bundle error:", error.message);
