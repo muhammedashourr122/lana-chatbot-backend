@@ -548,9 +548,24 @@
           if (imgHost && product.thumb) {
             imgHost.innerHTML = '<img src="' + product.thumb + '" alt="' + persona.name + '" style="width:100%;height:100%;object-fit:contain;padding:10px;">';
           }
+        })
+        .catch(function () {});
+
+      // Sale price only lives on the single-product endpoint, not the
+      // list one above — separate fetch so a slow/failed price lookup
+      // never blocks the image from showing.
+      fetch("https://lana-chatbot-backend.onrender.com/api/products/" + encodeURIComponent(slug) + "/price")
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
           var priceHost = document.getElementById("lana-scent-result-price");
-          if (priceHost && product.price != null) {
-            priceHost.textContent = product.price + " EGP";
+          if (!priceHost || !data.success) return;
+
+          if (data.on_sale) {
+            priceHost.innerHTML =
+              '<span>' + data.sale_price + ' EGP</span>' +
+              '<span style="font-weight:400;font-size:13px;color:#918789;text-decoration:line-through;margin-left:8px;">' + data.price + ' EGP</span>';
+          } else {
+            priceHost.textContent = data.price + " EGP";
           }
         })
         .catch(function () {});

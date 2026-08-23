@@ -56,6 +56,13 @@ async function getProducts(params = {}) {
   return easyOrdersGet("/products/", params);
 }
 
+// The list endpoint above returns a stripped-down shape — no sale_price,
+// description, or categories. Those only show up on this single-product
+// endpoint, hence this separate function.
+async function getProduct(productId) {
+  return easyOrdersGet(`/products/${productId}`);
+}
+
 async function getCategories() {
   return easyOrdersGet("/categories/");
 }
@@ -113,6 +120,7 @@ module.exports = {
   easyOrdersPatch,
   easyOrdersPost,
   getProducts,
+  getProduct,
   getCategories,
   getOrder,
   getOrderByShortId,

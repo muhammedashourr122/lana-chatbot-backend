@@ -15,6 +15,7 @@ const { getAwbPdfByTrackingNumber, getAwbPdfByTrackingNumbers } = require("./lib
 
 const {
   getProducts,
+  getProduct,
   getCategories,
   getOrder,
   getOrderByShortId,
@@ -130,6 +131,32 @@ app.get("/api/products", async (req, res) => {
       success: false,
       error: "Unable to load products",
     });
+  }
+});
+
+// The list endpoint above (and everything built on it — homepage,
+// scent finder, etc.) never carries sale_price; only the single-product
+// endpoint does. This resolves a slug to its id via the list, then
+// fetches full detail for the real price/sale_price pair.
+app.get("/api/products/:slug/price", async (req, res) => {
+  try {
+    const listData = await getProducts({ limit: 200 });
+    const products = listData.data || listData;
+    const match = products.find((p) => p.slug === req.params.slug);
+    if (!match) {
+      return res.status(404).json({ success: false, error: "Product not found" });
+    }
+
+    const detail = await getProduct(match.id);
+    res.json({
+      success: true,
+      price: detail.price,
+      sale_price: detail.sale_price,
+      on_sale: Boolean(detail.sale_price) && detail.sale_price < detail.price,
+    });
+  } catch (error) {
+    console.error("Product price error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to load product price" });
   }
 });
 
