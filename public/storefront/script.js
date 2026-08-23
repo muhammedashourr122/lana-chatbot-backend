@@ -575,6 +575,89 @@
   }
 
   /* =======================================================
+     OFFERS PAGE
+     Injects the exact same offer-boxes markup used on the
+     homepage (data-field attributes + .lana-offer-* classes,
+     already styled by homepage.css inside bundle.css) — the
+     already-running homepage.js MutationObserver picks these
+     new elements up and fills them in automatically, same as
+     anywhere else on the site. Editing Offer Box 1/2 in the
+     Homepage Builder updates this page and the homepage at once.
+     ======================================================= */
+
+  function buildOffersPage() {
+    if (location.pathname !== "/pages/offers") return;
+    if (document.getElementById("lana-offers-page")) return;
+
+    var pageContent = document.querySelector(".content_container.page_content");
+    if (!pageContent) return;
+
+    var host = document.createElement("div");
+    host.id = "lana-offers-page";
+    host.innerHTML =
+      '<section class="lana-offer">' +
+        '<div class="lana-offer-inner">' +
+          '<div class="lana-offer-grid">' +
+
+            '<div class="lana-offer-box">' +
+              '<div class="lana-offer-content">' +
+                '<div class="lana-offer-left">' +
+                  '<div class="lana-offer-eyebrow" data-field="box1-eyebrow">A Little Something Extra</div>' +
+                  '<h2 class="lana-offer-title">' +
+                    '<span data-field="box1-title1">More scents.</span><br>' +
+                    '<em data-field="box1-title2">More to love.</em>' +
+                  '</h2>' +
+                  '<p class="lana-offer-note" data-field="box1-note">Buy 2 or more fragrances and enjoy 10% off your order.</p>' +
+                '</div>' +
+                '<div class="lana-offer-code-wrap">' +
+                  '<div class="lana-offer-code-label">Your exclusive code</div>' +
+                  '<div class="lana-offer-code">' +
+                    '<strong data-field="box1-code">SAVE10</strong>' +
+                    '<span class="lana-offer-copy-icon" aria-hidden="true"></span>' +
+                  '</div>' +
+                '</div>' +
+                '<a href="https://www.lana-beauty.com/collections/all" class="lana-offer-button" data-field="box1-btn-link">' +
+                  '<span data-field="box1-btn-text">SHOP THE COLLECTION</span>' +
+                '</a>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="lana-offer-box lana-offer-box--explore">' +
+              '<div class="lana-offer-content">' +
+                '<div class="lana-offer-left">' +
+                  '<div class="lana-offer-eyebrow" data-field="box2-eyebrow">Explore More. Save More.</div>' +
+                  '<h2 class="lana-offer-title">' +
+                    '<span data-field="box2-title1">Buy 3</span><br>' +
+                    '<em data-field="box2-title2">Get 2 + Free Shipping.</em>' +
+                  '</h2>' +
+                  '<p class="lana-offer-note" data-field="box2-note">Choose 3 fragrances and receive 2 more absolutely free — with free shipping.</p>' +
+                '</div>' +
+                '<div class="lana-offer-code-wrap">' +
+                  '<div class="lana-offer-code-label">Your exclusive code</div>' +
+                  '<div class="lana-offer-code">' +
+                    '<strong data-field="box2-code">EXPLORE5</strong>' +
+                    '<span class="lana-offer-copy-icon" aria-hidden="true"></span>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="lana-offer-benefits">' +
+                  '<span class="lana-offer-benefit">BUY 3</span>' +
+                  '<span class="lana-offer-benefit">GET 2 FREE</span>' +
+                  '<span class="lana-offer-benefit">FREE SHIPPING</span>' +
+                '</div>' +
+                '<a href="https://www.lana-beauty.com/collections/all" class="lana-offer-button" data-field="box2-btn-link">' +
+                  '<span data-field="box2-btn-text">EXPLORE THE COLLECTION</span>' +
+                '</a>' +
+              '</div>' +
+            '</div>' +
+
+          '</div>' +
+        '</div>' +
+      '</section>';
+
+    pageContent.insertAdjacentElement("afterend", host);
+  }
+
+  /* =======================================================
      SCENT NOTES BREAKDOWN
      Top/Heart/Base note cards on product pages, derived from
      each product's real listed ingredients (order they're
@@ -810,6 +893,7 @@
     safeRun(buildTrackingForm);
     safeRun(showDeliveryEstimate);
     safeRun(buildScentFinder);
+    safeRun(buildOffersPage);
     safeRun(showScentNotes);
     safeRun(showShipmentTimeline);
     safeRun(injectProductSchema);

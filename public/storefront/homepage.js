@@ -196,13 +196,19 @@
   }
 
   var fetchedData = null;
-  var populated = false;
+  var populatedOnce = false;
 
+  // Re-runs every time new elements show up rather than a strict
+  // one-shot — populate() is idempotent (just sets text/attrs), and
+  // pages can gain new data-field sections after the initial pass
+  // (client-side navigation to another page, e.g. /pages/offers,
+  // without a full reload — the observer below must keep watching
+  // rather than disconnect after the first success).
   function tryPopulate() {
-    if (populated || !fetchedData) return;
+    if (!fetchedData) return;
     if (!pageHasKnownElements()) return;
     populate(fetchedData.content, fetchedData.products);
-    populated = true;
+    populatedOnce = true;
   }
 
   function init() {
@@ -229,22 +235,24 @@
     // client-side rendering), so a single one-shot pass on load isn't
     // reliable — watch for the placeholder elements to actually show
     // up and populate as soon as they do, same pattern already used
-    // elsewhere on this storefront for the same reason.
+    // elsewhere on this storefront for the same reason. Left running
+    // permanently (never disconnected) since client-side navigation to
+    // another page can introduce a fresh batch of data-field elements
+    // at any point in the session, not just on the very first page.
     var observer = new MutationObserver(function () {
       tryPopulate();
-      if (populated) observer.disconnect();
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
     // Also retry a few times on a plain timer as a fallback, in case
     // the sections are added in a way the observer doesn't catch.
+    // Only the timer stops itself — the observer above keeps running.
     var attempts = 0;
     var interval = setInterval(function () {
       attempts++;
       tryPopulate();
-      if (populated || attempts >= 20) {
+      if (populatedOnce || attempts >= 20) {
         clearInterval(interval);
-        observer.disconnect();
       }
     }, 500);
   }
