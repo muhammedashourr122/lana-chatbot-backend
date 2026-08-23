@@ -687,6 +687,20 @@
       tag.dataset.slug = slug;
       tag.textContent = JSON.stringify(schema);
       document.head.appendChild(tag);
+
+      // The list endpoint's price is never a live sale price — correct
+      // it once the real price/sale_price pair comes back, so structured
+      // data never mismatches what the page actually charges (Google
+      // Merchant flags exactly this kind of mismatch).
+      fetch("https://lana-chatbot-backend.onrender.com/api/products/" + encodeURIComponent(product.slug) + "/price")
+        .then(function (res) { return res.json(); })
+        .then(function (priceData) {
+          var currentTag = document.getElementById("lana-product-schema");
+          if (!currentTag || currentTag.dataset.slug !== product.slug || !priceData.success) return;
+          schema.offers.price = String(priceData.on_sale ? priceData.sale_price : priceData.price);
+          currentTag.textContent = JSON.stringify(schema);
+        })
+        .catch(function () {});
     }
 
     if (productCatalogCache) {
