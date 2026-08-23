@@ -924,9 +924,36 @@
   // mutations in rapid succession, and running every function above on
   // each one synchronously can lock up the tab.
   var debounceTimer = null;
-  var observer = new MutationObserver(function () {
+  function scheduleRunAllChecks() {
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(runAllChecks, 200);
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
+  }
+  var observer = new MutationObserver(scheduleRunAllChecks);
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+  // Every "/pages/*" custom page here is the same underlying route
+  // template ([id].js) — Next.js can update it between pages without a
+  // childList-detectable DOM mutation (e.g. a text-only change deep in
+  // an existing node), which the observer above can silently miss. The
+  // History API is the one thing that reliably fires on every real
+  // client-side navigation regardless of how the DOM update happens, so
+  // hook pushState/replaceState/popstate directly rather than trusting
+  // DOM mutations alone. A short delay lets React actually finish
+  // rendering the new route's content before the checks run.
+  function onRouteChange() {
+    setTimeout(runAllChecks, 50);
+  }
+  var originalPushState = history.pushState;
+  var originalReplaceState = history.replaceState;
+  history.pushState = function () {
+    var result = originalPushState.apply(this, arguments);
+    onRouteChange();
+    return result;
+  };
+  history.replaceState = function () {
+    var result = originalReplaceState.apply(this, arguments);
+    onRouteChange();
+    return result;
+  };
+  window.addEventListener("popstate", onRouteChange);
 })();
