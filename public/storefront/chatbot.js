@@ -1546,6 +1546,17 @@
      START
      ======================================================= */
 
+  // Wrapped: this file is concatenated with others into one bundle (see
+  // /storefront/bundle.js) — an uncaught throw here would otherwise abort
+  // whatever's appended after it in the same <script> tag too.
+  function safeInitLanaChat() {
+    try {
+      initLanaChat();
+    } catch (e) {
+      console.error("Lana chatbot.js init error:", e);
+    }
+  }
+
   if (
     document.readyState ===
     "loading"
@@ -1553,12 +1564,12 @@
 
     document.addEventListener(
       "DOMContentLoaded",
-      initLanaChat
+      safeInitLanaChat
     );
 
   } else {
 
-    initLanaChat();
+    safeInitLanaChat();
 
   }
 

@@ -249,9 +249,19 @@
     }, 500);
   }
 
+  // Wrapped for the same reason as the other bundled files: an uncaught
+  // throw here shouldn't be able to abort anything else in the bundle.
+  function safeInit() {
+    try {
+      init();
+    } catch (e) {
+      console.error("Lana homepage.js init error:", e);
+    }
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", safeInit);
   } else {
-    init();
+    safeInit();
   }
 })();

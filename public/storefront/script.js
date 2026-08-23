@@ -791,15 +791,28 @@
       .catch(function () {});
   }
 
+  // Each check runs isolated — one throwing (bad DOM assumption, a slug
+  // that doesn't match expectations, etc.) must never stop the others,
+  // and when this file is concatenated with others into one bundle
+  // (see /storefront/bundle.js), an uncaught error here would otherwise
+  // abort everything appended after it in the same <script> tag too.
+  function safeRun(fn) {
+    try {
+      fn();
+    } catch (e) {
+      console.error("Lana script.js error in " + fn.name + ":", e);
+    }
+  }
+
   function runAllChecks() {
-    renamePagesHeading();
-    showOrderNumberInStatusRow();
-    buildTrackingForm();
-    showDeliveryEstimate();
-    buildScentFinder();
-    showScentNotes();
-    showShipmentTimeline();
-    injectProductSchema();
+    safeRun(renamePagesHeading);
+    safeRun(showOrderNumberInStatusRow);
+    safeRun(buildTrackingForm);
+    safeRun(showDeliveryEstimate);
+    safeRun(buildScentFinder);
+    safeRun(showScentNotes);
+    safeRun(showShipmentTimeline);
+    safeRun(injectProductSchema);
   }
 
   runAllChecks();
