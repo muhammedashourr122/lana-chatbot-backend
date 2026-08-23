@@ -197,6 +197,7 @@
 
   var fetchedData = null;
   var populatedOnce = false;
+  var observer = null;
 
   // Re-runs every time new elements show up rather than a strict
   // one-shot — populate() is idempotent (just sets text/attrs), and
@@ -204,11 +205,18 @@
   // (client-side navigation to another page, e.g. /pages/offers,
   // without a full reload — the observer below must keep watching
   // rather than disconnect after the first success).
+  //
+  // populate() writing into elements is itself a DOM mutation, so the
+  // observer must be paused for the duration of the call — otherwise
+  // it re-fires on its own writes and this becomes an infinite loop
+  // that freezes the tab (this happened in production once already).
   function tryPopulate() {
     if (!fetchedData) return;
     if (!pageHasKnownElements()) return;
+    if (observer) observer.disconnect();
     populate(fetchedData.content, fetchedData.products);
     populatedOnce = true;
+    if (observer) observer.observe(document.body, { childList: true, subtree: true });
   }
 
   function init() {
@@ -239,8 +247,10 @@
     // permanently (never disconnected) since client-side navigation to
     // another page can introduce a fresh batch of data-field elements
     // at any point in the session, not just on the very first page.
-    var observer = new MutationObserver(function () {
-      tryPopulate();
+    var observerDebounce = null;
+    observer = new MutationObserver(function () {
+      clearTimeout(observerDebounce);
+      observerDebounce = setTimeout(tryPopulate, 150);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
