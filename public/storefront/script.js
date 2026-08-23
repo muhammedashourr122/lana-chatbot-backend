@@ -245,42 +245,34 @@
 
   /* =======================================================
      SCENT FINDER QUIZ
-     One-question mood picker → matches a real product, based
-     on each product's actual scent notes (not fabricated).
+     Multi-step: a broad scent-family question, then (only when
+     a family has more than one match) a follow-up to pick
+     between them — every option and result is grounded in a
+     real product's actual listed scent notes, not fabricated.
      ======================================================= */
 
-  var SCENT_MOODS = [
-    {
-      label: "Warm & Cozy",
-      note: "Aromatic spices, sweet gourmand, warm amber",
-      slug: "body-splash-amber-nights",
-      name: "Amber Nights",
-    },
-    {
-      label: "Fresh & Feminine",
-      note: "Juicy fruits, soft florals, warm musk",
-      slug: "body-splash-pure-skin",
-      name: "Pure Skin",
-    },
-    {
-      label: "Sweet & Floral",
-      note: "Sparkling freshness, white florals",
-      slug: "body-splash-pink-shadow",
-      name: "Pink Shadow",
-    },
-    {
-      label: "Bold & Masculine",
-      note: "Fresh aromatics, refined spices, warm woods",
-      slug: "body-splash-shadow-noir",
-      name: "Shadow Noir",
-    },
-    {
-      label: "Sweet & Fruity",
-      note: "Fresh pomegranate, soft musk",
-      slug: "body-splash-ruby-mist",
-      name: "Ruby Mist",
-    },
+  var SCENT_FAMILIES = [
+    { key: "warm", label: "Warm & Spicy", desc: "Cozy amber, sweet gourmand" },
+    { key: "fresh", label: "Fresh & Floral", desc: "Soft florals, clean freshness" },
+    { key: "bold", label: "Bold & Woody", desc: "Refined spices, warm woods" },
+    { key: "fruity", label: "Sweet & Fruity", desc: "Juicy, playful sweetness" },
   ];
+
+  var SCENT_PRODUCTS = {
+    warm: [
+      { slug: "body-splash-amber-nights", name: "Amber Nights", note: "Aromatic spices, sweet gourmand, warm amber" },
+    ],
+    fresh: [
+      { slug: "body-splash-pure-skin", name: "Pure Skin", note: "Juicy fruits, soft florals, warm musk" },
+      { slug: "body-splash-pink-shadow", name: "Pink Shadow", note: "Sparkling freshness, white florals" },
+    ],
+    bold: [
+      { slug: "body-splash-shadow-noir", name: "Shadow Noir", note: "Fresh aromatics, refined spices, warm woods" },
+    ],
+    fruity: [
+      { slug: "body-splash-ruby-mist", name: "Ruby Mist", note: "Fresh pomegranate, soft musk" },
+    ],
+  };
 
   function buildScentFinder() {
     if (location.pathname !== "/pages/scent-finder") return;
@@ -294,28 +286,38 @@
     host.style.cssText = "max-width:640px;margin:24px auto 0;font-family:inherit;";
     pageContent.insertAdjacentElement("afterend", host);
 
-    function renderQuestion() {
+    function renderOptionGrid(title, subtitle, items, onPick, onBack) {
       var html =
-        '<h2 style="text-align:center;font-size:20px;font-weight:700;color:#3a2e2c;margin:0 0 6px;">Find Your Signature Scent</h2>' +
-        '<p style="text-align:center;font-size:14px;color:#8b7d82;margin:0 0 24px;">Pick the mood that speaks to you</p>' +
+        '<h2 style="text-align:center;font-size:20px;font-weight:700;color:#3a2e2c;margin:0 0 6px;">' + title + '</h2>' +
+        '<p style="text-align:center;font-size:14px;color:#8b7d82;margin:0 0 24px;">' + subtitle + '</p>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">';
 
-      SCENT_MOODS.forEach(function (mood, i) {
+      items.forEach(function (item, i) {
         html +=
-          '<button type="button" class="lana-scent-mood-btn" data-mood-index="' + i + '" ' +
+          '<button type="button" class="lana-scent-opt-btn" data-opt-index="' + i + '" ' +
             'style="cursor:pointer;text-align:left;padding:16px;border:1px solid #E5E5EF;border-radius:14px;background:#fff;transition:border-color .2s;">' +
-            '<div style="font-weight:600;font-size:15px;color:#3a2e2c;margin-bottom:4px;">' + mood.label + '</div>' +
-            '<div style="font-size:12px;color:#8b7d82;">' + mood.note + '</div>' +
+            '<div style="font-weight:600;font-size:15px;color:#3a2e2c;margin-bottom:4px;">' + item.label + '</div>' +
+            '<div style="font-size:12px;color:#8b7d82;">' + item.desc + '</div>' +
           '</button>';
       });
 
       html += '</div>';
+
+      if (onBack) {
+        html +=
+          '<div style="text-align:center;margin-top:18px;">' +
+            '<button type="button" id="lana-scent-back" ' +
+              'style="background:none;border:none;color:#8b7d82;text-decoration:underline;font-size:12px;cursor:pointer;">' +
+              '&larr; Back' +
+            '</button>' +
+          '</div>';
+      }
+
       host.innerHTML = html;
 
-      host.querySelectorAll(".lana-scent-mood-btn").forEach(function (btn) {
+      host.querySelectorAll(".lana-scent-opt-btn").forEach(function (btn) {
         btn.addEventListener("click", function () {
-          var mood = SCENT_MOODS[Number(btn.getAttribute("data-mood-index"))];
-          renderResult(mood);
+          onPick(items[Number(btn.getAttribute("data-opt-index"))]);
         });
         btn.addEventListener("mouseenter", function () {
           btn.style.borderColor = "#6C4452";
@@ -324,28 +326,61 @@
           btn.style.borderColor = "#E5E5EF";
         });
       });
+
+      if (onBack) {
+        document.getElementById("lana-scent-back").addEventListener("click", onBack);
+      }
     }
 
-    function renderResult(mood) {
+    function renderStep1() {
+      renderOptionGrid(
+        "Find Your Signature Scent",
+        "Step 1 of 2 — which family pulls you in?",
+        SCENT_FAMILIES.map(function (f) { return { label: f.label, desc: f.desc, key: f.key }; }),
+        function (family) {
+          var candidates = SCENT_PRODUCTS[family.key];
+          if (candidates.length === 1) {
+            renderResult(candidates[0]);
+          } else {
+            renderStep2(candidates);
+          }
+        },
+        null
+      );
+    }
+
+    function renderStep2(candidates) {
+      renderOptionGrid(
+        "Almost There",
+        "Step 2 of 2 — which one feels more you?",
+        candidates.map(function (p) { return { label: p.name, desc: p.note, slug: p.slug }; }),
+        function (picked) {
+          renderResult(candidates.filter(function (p) { return p.slug === picked.slug; })[0]);
+        },
+        renderStep1
+      );
+    }
+
+    function renderResult(product) {
       host.innerHTML =
         '<div style="text-align:center;">' +
           '<p style="font-size:13px;color:#8b7d82;margin:0 0 6px;text-transform:uppercase;letter-spacing:.05em;">Your signature scent</p>' +
-          '<h2 style="font-size:22px;font-weight:700;color:#3a2e2c;margin:0 0 8px;">' + mood.name + '</h2>' +
-          '<p style="font-size:14px;color:#8b7d82;margin:0 0 20px;">' + mood.note + '</p>' +
-          '<a href="/products/' + encodeURIComponent(mood.slug) + '" ' +
+          '<h2 style="font-size:22px;font-weight:700;color:#3a2e2c;margin:0 0 8px;">' + product.name + '</h2>' +
+          '<p style="font-size:14px;color:#8b7d82;margin:0 0 20px;">' + product.note + '</p>' +
+          '<a href="/products/' + encodeURIComponent(product.slug) + '" ' +
             'style="display:inline-block;background:#6C4452;color:#fff;text-decoration:none;padding:12px 32px;border-radius:999px;font-size:14px;font-weight:600;margin-bottom:14px;">' +
-            'Shop ' + mood.name +
+            'Shop ' + product.name +
           '</a><br/>' +
           '<button type="button" id="lana-scent-retry" ' +
             'style="background:none;border:none;color:#6C4452;text-decoration:underline;font-size:13px;cursor:pointer;">' +
-            'Try again' +
+            'Retake the Quiz' +
           '</button>' +
         '</div>';
 
-      document.getElementById("lana-scent-retry").addEventListener("click", renderQuestion);
+      document.getElementById("lana-scent-retry").addEventListener("click", renderStep1);
     }
 
-    renderQuestion();
+    renderStep1();
   }
 
   /* =======================================================
