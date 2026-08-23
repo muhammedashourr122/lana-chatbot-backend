@@ -66,8 +66,15 @@
   var ORDERS_BY_PHONE_API = "https://lana-chatbot-backend.onrender.com/api/orders-by-phone";
 
   function buildTrackingForm() {
-    if (location.pathname !== "/pages/tracking") return;
-    if (document.getElementById("lana-track-form")) return;
+    var existingHost = document.getElementById("lana-track-form-host");
+    if (location.pathname !== "/pages/tracking") {
+      // Client-side navigation away otherwise leaves this behind on
+      // every other page (same leak class as the scent finder/offers
+      // injectors below).
+      if (existingHost) existingHost.remove();
+      return;
+    }
+    if (existingHost) return;
 
     // Insert as a sibling AFTER the React-owned page_content node, never
     // write into it directly — mutating a React-managed subtree causes
@@ -77,6 +84,7 @@
     if (!pageContent) return;
 
     var host = document.createElement("div");
+    host.id = "lana-track-form-host";
     host.style.cssText = "margin-top:24px;";
     pageContent.insertAdjacentElement("afterend", host);
 
@@ -347,8 +355,14 @@
   ];
 
   function buildScentFinder() {
-    if (location.pathname !== "/pages/scent-finder") return;
-    if (document.getElementById("lana-scent-finder")) return;
+    var existing = document.getElementById("lana-scent-finder");
+    if (location.pathname !== "/pages/scent-finder") {
+      // Client-side navigation away from this page (no full reload)
+      // otherwise leaves this injected block behind on every other page.
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
 
     var pageContent = document.querySelector(".content_container.page_content");
     if (!pageContent) return;
@@ -586,8 +600,12 @@
      ======================================================= */
 
   function buildOffersPage() {
-    if (location.pathname !== "/pages/offers") return;
-    if (document.getElementById("lana-offers-page")) return;
+    var existing = document.getElementById("lana-offers-page");
+    if (location.pathname !== "/pages/offers") {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) return;
 
     var pageContent = document.querySelector(".content_container.page_content");
     if (!pageContent) return;
