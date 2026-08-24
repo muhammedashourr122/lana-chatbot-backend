@@ -89,13 +89,23 @@
     if (!items || !items.length) return;
     var enabled = items.filter(function (i) { return i.enabled; });
 
+    // The pasted CSS for these containers was built assuming a fixed,
+    // known set of items with flex-wrap: nowrap — fine for a static
+    // count, but this list is now editable from the dashboard and can
+    // grow. Forcing wrap here (regardless of whatever the static CSS
+    // says) means adding another payment method later never requires
+    // another re-paste to avoid overflow/overlap.
     document.querySelectorAll(".lana-payment-methods").forEach(function (container) {
       container.innerHTML = "";
+      container.style.flexWrap = "wrap";
+      container.style.rowGap = "8px";
       enabled.forEach(function (item) { container.appendChild(buildPaymentItem(item, "")); });
     });
 
     document.querySelectorAll(".lana-gallery-payment-methods").forEach(function (container) {
       container.innerHTML = "";
+      container.style.flexWrap = "wrap";
+      container.style.rowGap = "6px";
       enabled.forEach(function (item) { container.appendChild(buildPaymentItem(item, "gallery-")); });
     });
   }
