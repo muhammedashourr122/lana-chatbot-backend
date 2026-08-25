@@ -26,6 +26,8 @@ const { logActivity, getRecentActivity } = require("../lib/activity-log-store");
 const rawMaterialsStore = require("../lib/raw-materials-store");
 const recipesStore = require("../lib/product-recipes-store");
 const productionRunsStore = require("../lib/production-runs-store");
+const suppliersStore = require("../lib/suppliers-store");
+const purchasesStore = require("../lib/purchases-store");
 
 const router = express.Router();
 
@@ -1123,6 +1125,177 @@ router.post("/production/runs", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Production run error:", error.response?.data || error.message);
     res.status(500).json({ success: false, error: "Unable to log production run" });
+  }
+});
+
+// ---------------- Suppliers ----------------
+
+router.get("/production/suppliers", requireOwner, async (req, res) => {
+  try {
+    const suppliers = await suppliersStore.getSuppliers();
+    res.json({ success: true, suppliers });
+  } catch (error) {
+    console.error("Get suppliers error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load suppliers" });
+  }
+});
+
+router.post("/production/suppliers", requireOwner, async (req, res) => {
+  try {
+    const { name, phone, notes } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, error: "Supplier name is required" });
+    }
+    const supplier = await suppliersStore.createSupplier({ name: String(name).trim(), phone, notes });
+    logActivity(req.user.username, "supplier_created", { supplier_name: supplier.name });
+    res.json({ success: true, supplier });
+  } catch (error) {
+    console.error("Create supplier error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to create supplier" });
+  }
+});
+
+router.patch("/production/suppliers/:id", requireOwner, async (req, res) => {
+  try {
+    const { name, phone, notes } = req.body || {};
+    const fields = {};
+    if (name !== undefined) fields.name = String(name).trim();
+    if (phone !== undefined) fields.phone = phone;
+    if (notes !== undefined) fields.notes = notes;
+    const supplier = await suppliersStore.updateSupplier(req.params.id, fields);
+    logActivity(req.user.username, "supplier_updated", { supplier_name: supplier.name });
+    res.json({ success: true, supplier });
+  } catch (error) {
+    console.error("Update supplier error:", error.message);
+    res.status(400).json({ success: false, error: error.message || "Unable to update supplier" });
+  }
+});
+
+router.delete("/production/suppliers/:id", requireOwner, async (req, res) => {
+  try {
+    await suppliersStore.deleteSupplier(req.params.id);
+    logActivity(req.user.username, "supplier_deleted", { supplier_id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete supplier error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to delete supplier" });
+  }
+});
+
+router.post("/production/suppliers/:id/payments", requireOwner, async (req, res) => {
+  try {
+    const { amount, notes } = req.body || {};
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) {
+      return res.status(400).json({ success: false, error: "A positive amount is required" });
+    }
+    const suppliers = await suppliersStore.getSuppliers();
+    const supplier = suppliers.find((s) => s.id === req.params.id);
+    if (!supplier) return res.status(404).json({ success: false, error: "Supplier not found" });
+
+    await suppliersStore.adjustSupplierBalance(supplier.id, -amt);
+    const payment = await purchasesStore.logSupplierPayment({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      amount: amt,
+      paidBy: req.user.username,
+      notes: notes || null,
+    });
+    logActivity(req.user.username, "supplier_payment", { supplier_name: supplier.name, amount: amt });
+    res.json({ success: true, payment });
+  } catch (error) {
+    console.error("Supplier payment error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to record payment" });
+  }
+});
+
+router.get("/production/payments", requireOwner, async (req, res) => {
+  try {
+    const payments = await purchasesStore.getSupplierPayments(50);
+    res.json({ success: true, payments });
+  } catch (error) {
+    console.error("Get supplier payments error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load payments" });
+  }
+});
+
+// ---------------- Purchases ----------------
+
+router.get("/production/purchases", requireOwner, async (req, res) => {
+  try {
+    const purchases = await purchasesStore.getPurchases(50);
+    res.json({ success: true, purchases });
+  } catch (error) {
+    console.error("Get purchases error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load purchases" });
+  }
+});
+
+router.post("/production/purchases", requireOwner, async (req, res) => {
+  try {
+    const { supplierId, items, amountPaid, notes } = req.body || {};
+    if (!supplierId || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: "supplierId and at least one item are required" });
+    }
+
+    const suppliers = await suppliersStore.getSuppliers();
+    const supplier = suppliers.find((s) => s.id === supplierId);
+    if (!supplier) return res.status(404).json({ success: false, error: "Supplier not found" });
+
+    const materials = await rawMaterialsStore.getRawMaterials();
+    const materialsById = Object.fromEntries(materials.map((m) => [m.id, m]));
+
+    const lineItems = [];
+    let totalAmount = 0;
+
+    for (const item of items) {
+      const material = materialsById[item.materialId];
+      const quantity = Number(item.quantity);
+      const unitCost = Number(item.unitCost);
+      if (!material) {
+        return res.status(400).json({ success: false, error: "One of the selected materials no longer exists" });
+      }
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return res.status(400).json({ success: false, error: "Each item needs a positive quantity" });
+      }
+      if (!Number.isFinite(unitCost) || unitCost < 0) {
+        return res.status(400).json({ success: false, error: "Each item needs a valid unit cost" });
+      }
+      const lineTotal = quantity * unitCost;
+      totalAmount += lineTotal;
+      lineItems.push({ materialId: material.id, materialName: material.name, quantity, unitCost, lineTotal });
+    }
+
+    // Apply stock increases and refresh each material's cost to the latest purchase price.
+    for (const item of lineItems) {
+      const material = materialsById[item.materialId];
+      await rawMaterialsStore.updateRawMaterial(material.id, {
+        stock: material.stock + item.quantity,
+        costPerUnit: item.unitCost,
+      });
+    }
+
+    let paid = Number(amountPaid);
+    if (!Number.isFinite(paid) || paid < 0) paid = 0;
+    if (paid > totalAmount) paid = totalAmount;
+
+    await suppliersStore.adjustSupplierBalance(supplier.id, totalAmount - paid);
+
+    const purchase = await purchasesStore.logPurchase({
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      items: lineItems,
+      totalAmount,
+      amountPaid: paid,
+      loggedBy: req.user.username,
+      notes: notes || null,
+    });
+
+    logActivity(req.user.username, "purchase_logged", { supplier_name: supplier.name, total_amount: Math.round(totalAmount * 100) / 100 });
+    res.json({ success: true, purchase });
+  } catch (error) {
+    console.error("Log purchase error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to log purchase" });
   }
 });
 

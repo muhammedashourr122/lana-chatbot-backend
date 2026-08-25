@@ -1332,6 +1332,201 @@ function renderProductionRuns() {
   }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
 }
 
+// ---------------- Suppliers & Purchases (owner-only) ----------------
+
+let cachedSuppliers = [];
+
+function renderSuppliers() {
+  const root = document.getElementById("suppliers-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading suppliers…</p></div>';
+
+  fetch("/api/admin/production/suppliers")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load suppliers.</p></div>'; return; }
+      cachedSuppliers = data.suppliers;
+
+      let html = '<div class="section-card"><h2>Suppliers</h2>';
+      if (data.suppliers.length === 0) {
+        html += '<p class="empty">No suppliers yet — add one below.</p>';
+      } else {
+        html += '<div class="table-scroll"><table><tr><th>Name</th><th>Phone</th><th>Balance Owed</th><th></th></tr>' +
+          data.suppliers.map((s) => {
+            const owed = s.balance > 0 ? ' class="attention"' : "";
+            return '<tr data-supplier-id="' + s.id + '"><td>' + esc(s.name) + '</td><td>' + esc(s.phone || "—") + '</td><td' + owed + '>' + money(s.balance) + '</td>' +
+              '<td>' + (s.balance > 0 ? '<button class="pay-supplier-btn" style="padding:6px 10px;">Record Payment</button> ' : "") +
+              '<button class="delete-supplier-btn" style="padding:6px 10px;color:var(--danger-text);">Delete</button></td></tr>';
+          }).join("") +
+          "</table></div>";
+      }
+
+      html += '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Add Supplier</h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Name</span><input type="text" id="new-sup-name" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Phone</span><input type="text" id="new-sup-phone" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Notes</span><input type="text" id="new-sup-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        "</div>" +
+        '<button id="add-sup-btn" class="btn">Add Supplier</button> <span id="add-sup-msg" style="font-size:12px;"></span></div>';
+
+      root.innerHTML = html;
+
+      root.querySelectorAll(".delete-supplier-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const id = row.getAttribute("data-supplier-id");
+          if (!confirm("Delete this supplier?")) return;
+          fetch("/api/admin/production/suppliers/" + id, { method: "DELETE" })
+            .then((res) => res.json())
+            .then((result) => { if (result.success) renderSuppliers(); else alert(result.error || "Failed"); });
+        });
+      });
+
+      root.querySelectorAll(".pay-supplier-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const id = row.getAttribute("data-supplier-id");
+          const amount = prompt("Payment amount:");
+          if (!amount) return;
+          fetch("/api/admin/production/suppliers/" + id + "/payments", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ amount }),
+          })
+            .then((res) => res.json())
+            .then((result) => { if (result.success) renderSuppliers(); else alert(result.error || "Failed"); });
+        });
+      });
+
+      document.getElementById("add-sup-btn").addEventListener("click", () => {
+        const msg = document.getElementById("add-sup-msg");
+        const name = document.getElementById("new-sup-name").value.trim();
+        if (!name) { msg.textContent = "Name is required."; msg.style.color = "#c0392b"; return; }
+        const body = {
+          name,
+          phone: document.getElementById("new-sup-phone").value.trim(),
+          notes: document.getElementById("new-sup-notes").value.trim(),
+        };
+        msg.textContent = "Adding…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/production/suppliers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.json())
+          .then((result) => { if (result.success) renderSuppliers(); else { msg.textContent = result.error || "Failed."; msg.style.color = "#c0392b"; } })
+          .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+      });
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load suppliers.</p></div>'; });
+}
+
+function purchaseItemRowHtml(materials) {
+  return '<div class="purchase-item-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+    '<select class="purchase-material-select" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    materials.map((m) => '<option value="' + esc(m.id) + '">' + esc(m.name) + " (" + esc(m.unit) + ")</option>").join("") +
+    '</select>' +
+    '<input type="number" step="0.01" class="purchase-qty-input" placeholder="quantity" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    '<input type="number" step="0.01" class="purchase-cost-input" placeholder="unit cost" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    '<button type="button" class="purchase-remove-row-btn" style="padding:6px 10px;color:var(--danger-text);">×</button>' +
+    "</div>";
+}
+
+function renderPurchases() {
+  const root = document.getElementById("purchases-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  Promise.all([
+    fetch("/api/admin/production/suppliers").then((res) => res.json()),
+    fetch("/api/admin/production/raw-materials").then((res) => res.json()),
+    fetch("/api/admin/production/purchases").then((res) => res.json()),
+  ]).then(([suppliersData, materialsData, purchasesData]) => {
+    if (!suppliersData.success || !materialsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+    const suppliers = suppliersData.suppliers;
+    const materials = materialsData.materials;
+    const purchases = purchasesData.success ? purchasesData.purchases : [];
+
+    if (suppliers.length === 0 || materials.length === 0) {
+      root.innerHTML = '<div class="section-card"><h2>Log a Purchase</h2><p class="empty">Add at least one supplier and one raw material first.</p></div>';
+      return;
+    }
+
+    let html = '<div class="section-card"><h2>Log a Purchase <span class="hint">— buying raw materials from a supplier</span></h2>' +
+      '<div style="margin-bottom:10px;"><span style="font-size:12px;color:var(--muted);">Supplier</span><br>' +
+      '<select id="purchase-supplier-select" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);">' +
+      suppliers.map((s) => '<option value="' + esc(s.id) + '">' + esc(s.name) + "</option>").join("") +
+      "</select></div>" +
+      '<div id="purchase-items">' + purchaseItemRowHtml(materials) + "</div>" +
+      '<button type="button" id="purchase-add-row-btn" style="padding:6px 12px;margin-top:4px;">+ Add Item</button>' +
+      '<div class="detail-grid" style="margin-top:14px;">' +
+      '<div><span>Amount Paid Now</span><input type="number" step="0.01" id="purchase-amount-paid" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Notes (optional)</span><input type="text" id="purchase-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      "</div>" +
+      '<div style="margin-top:14px;"><button id="purchase-submit-btn" class="btn">Log Purchase</button> <span id="purchase-msg" style="font-size:12px;"></span></div>' +
+      "</div>";
+
+    html += '<div class="section-card"><h2>Recent Purchases</h2>';
+    if (purchases.length === 0) {
+      html += '<p class="empty">No purchases logged yet.</p>';
+    } else {
+      html += '<div class="table-scroll"><table><tr><th>Date</th><th>Supplier</th><th>Items</th><th>Total</th><th>Paid</th></tr>' +
+        purchases.map((p) =>
+          "<tr><td>" + new Date(p.createdAt).toLocaleString() + "</td><td>" + esc(p.supplierName) + "</td><td>" +
+          esc(p.items.map((i) => i.materialName + " ×" + i.quantity).join(", ")) + "</td><td>" + money(p.totalAmount) + "</td><td>" + money(p.amountPaid) + "</td></tr>"
+        ).join("") +
+        "</table></div>";
+    }
+    html += "</div>";
+
+    root.innerHTML = html;
+
+    function wireRemoveButtons() {
+      root.querySelectorAll(".purchase-remove-row-btn").forEach((btn) => {
+        btn.onclick = () => btn.closest(".purchase-item-row").remove();
+      });
+    }
+    wireRemoveButtons();
+
+    document.getElementById("purchase-add-row-btn").addEventListener("click", () => {
+      document.getElementById("purchase-items").insertAdjacentHTML("beforeend", purchaseItemRowHtml(materials));
+      wireRemoveButtons();
+    });
+
+    document.getElementById("purchase-submit-btn").addEventListener("click", () => {
+      const msg = document.getElementById("purchase-msg");
+      const supplierId = document.getElementById("purchase-supplier-select").value;
+      const items = Array.from(root.querySelectorAll(".purchase-item-row")).map((row) => ({
+        materialId: row.querySelector(".purchase-material-select").value,
+        quantity: row.querySelector(".purchase-qty-input").value,
+        unitCost: row.querySelector(".purchase-cost-input").value,
+      }));
+      const amountPaid = document.getElementById("purchase-amount-paid").value;
+      const notes = document.getElementById("purchase-notes").value.trim();
+
+      msg.textContent = "Logging…";
+      msg.style.color = "var(--muted)";
+      fetch("/api/admin/production/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplierId, items, amountPaid, notes }),
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            renderPurchases();
+            renderSuppliers();
+            renderRawMaterials();
+            renderProductionCapacity();
+          } else {
+            msg.textContent = result.error || "Failed.";
+            msg.style.color = "#c0392b";
+          }
+        })
+        .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+    });
+  }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
 function renderProducts() {
   const root = document.getElementById("products-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -1818,6 +2013,8 @@ function init() {
         renderRawMaterials();
         renderRecipes();
         renderProductionRuns();
+        renderSuppliers();
+        renderPurchases();
         renderActivity();
       }
       renderBostaSummary();
