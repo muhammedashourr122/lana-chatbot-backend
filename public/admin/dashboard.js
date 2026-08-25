@@ -1073,9 +1073,9 @@ function renderRawMaterials() {
           '<td>' + esc(m.category || "General") + '</td>' +
           '<td>' + (m.productName ? '<span class="badge neutral">' + esc(m.productName) + '</span>' : "—") + '</td>' +
           '<td><input type="text" class="mat-unit" value="' + esc(m.unit) + '" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
-          '<td><input type="number" step="0.01" class="mat-stock" value="' + m.stock + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
-          '<td><input type="number" step="0.01" class="mat-cost" value="' + m.costPerUnit + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
-          '<td><input type="number" step="0.01" class="mat-threshold" value="' + m.lowStockThreshold + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><input type="number" step="0.01" class="mat-stock" value="' + m.stock + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></td>' +
+          '<td><input type="number" step="0.01" class="mat-cost" value="' + m.costPerUnit + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></td>' +
+          '<td><input type="number" step="0.01" class="mat-threshold" value="' + m.lowStockThreshold + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></td>' +
           '<td><button class="mat-save-btn btn" style="padding:6px 12px;">Save</button> <button class="mat-delete-btn" style="padding:6px 10px;color:var(--danger-text);">Delete</button> <span class="mat-msg" style="font-size:12px;"></span></td>' +
           "</tr>";
       });
@@ -1090,9 +1090,9 @@ function renderRawMaterials() {
         '<div><span>For Product (optional)</span><select id="new-mat-product" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— shared material —</option>' +
         products.map((p) => '<option value="' + esc(p.id) + '" data-name="' + esc(p.name) + '">' + esc(p.name) + "</option>").join("") + "</select></div>" +
         '<div><span>Unit</span><input type="text" id="new-mat-unit" placeholder="piece / ml / gram" value="piece" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
-        '<div><span>Starting Stock</span><input type="number" step="0.01" id="new-mat-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
-        '<div><span>Cost per Unit</span><input type="number" step="0.01" id="new-mat-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
-        '<div><span>Low Stock Threshold</span><input type="number" step="0.01" id="new-mat-threshold" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Starting Stock</span><input type="number" step="0.01" id="new-mat-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
+        '<div><span>Cost per Unit</span><input type="number" step="0.01" id="new-mat-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
+        '<div><span>Low Stock Threshold</span><input type="number" step="0.01" id="new-mat-threshold" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
         "</div>" +
         '<button id="add-mat-btn" class="btn">Add Material</button> <span id="add-mat-msg" style="font-size:12px;"></span></div>';
 
@@ -1223,11 +1223,17 @@ function renderRecipes() {
 }
 
 function recipeRowHtml(materials, selectedMaterialId, quantityPerUnit) {
+  // If the recipe still points at a material that's since been deleted,
+  // show that explicitly instead of the <select> silently falling back to
+  // whichever option happens to be first — saving in that state would
+  // silently swap the recipe onto the wrong material.
+  const materialExists = materials.some((m) => m.id === selectedMaterialId);
   return '<div class="recipe-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
     '<select class="recipe-material-select" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    (selectedMaterialId && !materialExists ? '<option value="' + esc(selectedMaterialId) + '" selected disabled>(deleted material — pick a replacement)</option>' : "") +
     materials.map((m) => '<option value="' + esc(m.id) + '" ' + (m.id === selectedMaterialId ? "selected" : "") + '>' + esc(m.name) + " (" + esc(m.unit) + ")</option>").join("") +
     '</select>' +
-    '<input type="number" step="0.001" class="recipe-qty-input" value="' + (quantityPerUnit ?? "") + '" placeholder="qty per unit" style="width:120px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    '<input type="number" step="0.001" class="recipe-qty-input" value="' + (quantityPerUnit ?? "") + '" placeholder="qty per unit" style="width:120px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0">' +
     '<button type="button" class="recipe-remove-btn" style="padding:6px 10px;color:var(--danger-text);">×</button>' +
     "</div>";
 }
@@ -1238,8 +1244,8 @@ function quickAddMaterialFormHtml(productName) {
     '<div><span>Name</span><input type="text" id="qam-name" value="Sticker — ' + esc(productName) + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
     '<div><span>Category</span><select id="qam-category" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="Sticker">Sticker</option><option value="Scent">Scent</option><option value="Other">Other</option></select></div>' +
     '<div><span>Unit</span><input type="text" id="qam-unit" value="piece" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
-    '<div><span>Starting Stock</span><input type="number" step="0.01" id="qam-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
-    '<div><span>Cost per Unit</span><input type="number" step="0.01" id="qam-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+    '<div><span>Starting Stock</span><input type="number" step="0.01" id="qam-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
+    '<div><span>Cost per Unit</span><input type="number" step="0.01" id="qam-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
     "</div>" +
     '<button type="button" id="qam-submit-btn" class="btn">Create &amp; Add to Recipe</button> <button type="button" id="qam-cancel-btn" style="padding:6px 12px;">Cancel</button> <span id="qam-msg" style="font-size:12px;"></span>' +
     "</div>";
@@ -1326,6 +1332,7 @@ function loadRecipeEditor(productId, materials, productName) {
               }
               wireRemoveButtons();
               container.innerHTML = "";
+              renderRawMaterials();
             })
             .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
         });
@@ -1379,7 +1386,7 @@ function renderProductionRuns() {
       '<div><span>Product</span><select id="run-product-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
       products.map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>").join("") +
       "</select></div>" +
-      '<div><span>Quantity Produced</span><input type="number" step="1" id="run-quantity-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Quantity Produced</span><input type="number" step="1" id="run-quantity-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
       '<div><span>Notes (optional)</span><input type="text" id="run-notes-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
       "</div>" +
       '<button id="run-submit-btn" class="btn">Log Production Run</button> <span id="run-msg" style="font-size:12px;"></span></div>';
@@ -1498,7 +1505,7 @@ function renderSuppliers() {
             body: JSON.stringify({ amount }),
           })
             .then((res) => res.json())
-            .then((result) => { if (result.success) renderSuppliers(); else alert(result.error || "Failed"); });
+            .then((result) => { if (result.success) { renderSuppliers(); renderCashLedger(); } else alert(result.error || "Failed"); });
         });
       });
 
@@ -1531,8 +1538,8 @@ function purchaseItemRowHtml(materials) {
     '<select class="purchase-material-select" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
     materials.map((m) => '<option value="' + esc(m.id) + '">' + esc(m.name) + " (" + esc(m.unit) + ")</option>").join("") +
     '</select>' +
-    '<input type="number" step="0.01" class="purchase-qty-input" placeholder="quantity" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
-    '<input type="number" step="0.01" class="purchase-cost-input" placeholder="unit cost" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    '<input type="number" step="0.01" class="purchase-qty-input" placeholder="quantity" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0">' +
+    '<input type="number" step="0.01" class="purchase-cost-input" placeholder="unit cost" style="width:110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0">' +
     '<button type="button" class="purchase-remove-row-btn" style="padding:6px 10px;color:var(--danger-text);">×</button>' +
     "</div>";
 }
@@ -1564,7 +1571,7 @@ function renderPurchases() {
       '<div id="purchase-items">' + purchaseItemRowHtml(materials) + "</div>" +
       '<button type="button" id="purchase-add-row-btn" style="padding:6px 12px;margin-top:4px;">+ Add Item</button>' +
       '<div class="detail-grid" style="margin-top:14px;">' +
-      '<div><span>Amount Paid Now</span><input type="number" step="0.01" id="purchase-amount-paid" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Amount Paid Now</span><input type="number" step="0.01" id="purchase-amount-paid" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
       '<div><span>Notes (optional)</span><input type="text" id="purchase-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
       "</div>" +
       '<div style="margin-top:14px;"><button id="purchase-submit-btn" class="btn">Log Purchase</button> <span id="purchase-msg" style="font-size:12px;"></span></div>' +
@@ -1622,6 +1629,7 @@ function renderPurchases() {
             renderSuppliers();
             renderRawMaterials();
             renderProductionCapacity();
+            renderCashLedger();
           } else {
             msg.textContent = result.error || "Failed.";
             msg.style.color = "#c0392b";
@@ -1648,7 +1656,7 @@ function renderCashLedger() {
         '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Record a Manual Entry</h3>' +
         '<div class="detail-grid" style="margin-bottom:14px;">' +
         '<div><span>Type</span><select id="cash-type-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="receipt">Receipt (cash in)</option><option value="disbursement">Disbursement (cash out)</option></select></div>' +
-        '<div><span>Amount</span><input type="number" step="0.01" id="cash-amount-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Amount</span><input type="number" step="0.01" id="cash-amount-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
         '<div><span>Category</span><input type="text" id="cash-category-input" placeholder="e.g. rent, sale, misc" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
         '<div><span>Description</span><input type="text" id="cash-description-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
         "</div>" +
@@ -1721,7 +1729,7 @@ function renderStockCount() {
       '<div><span>Material</span><select id="sc-material-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
       materials.map((m) => '<option value="' + esc(m.id) + '" data-stock="' + m.stock + '">' + esc(m.name) + " (currently " + m.stock + " " + esc(m.unit) + ")</option>").join("") +
       "</select></div>" +
-      '<div><span>Counted Stock</span><input type="number" step="0.01" id="sc-material-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Counted Stock</span><input type="number" step="0.01" id="sc-material-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
       '<div><span>Reason</span><select id="sc-material-reason" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' + reasonOptions + "</select></div>" +
       '<div><span>Notes (optional)</span><input type="text" id="sc-material-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
       "</div>" +
@@ -1732,7 +1740,7 @@ function renderStockCount() {
       '<div><span>Product</span><select id="sc-product-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
       products.map((p) => '<option value="' + esc(p.id) + '" data-stock="' + (p.quantity || 0) + '">' + esc(p.name) + " (currently " + (p.quantity || 0) + ")</option>").join("") +
       "</select></div>" +
-      '<div><span>Counted Stock</span><input type="number" step="1" id="sc-product-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Counted Stock</span><input type="number" step="1" id="sc-product-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" min="0"></div>' +
       '<div><span>Reason</span><select id="sc-product-reason" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' + reasonOptions + "</select></div>" +
       '<div><span>Notes (optional)</span><input type="text" id="sc-product-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
       "</div>" +
