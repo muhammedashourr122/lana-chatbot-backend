@@ -1696,6 +1696,142 @@ function renderCashLedger() {
     .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
 }
 
+// ---------------- Stock Adjustments / Counts (owner-only) ----------------
+
+const STOCK_ADJUSTMENT_REASONS = ["Physical count correction", "Damaged", "Shrinkage / loss", "Expired", "Found extra", "Other"];
+
+function renderStockCount() {
+  const root = document.getElementById("stock-count-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  Promise.all([
+    fetch("/api/admin/production/raw-materials").then((res) => res.json()),
+    fetch("/api/admin/products").then((res) => res.json()),
+    fetch("/api/admin/production/stock-adjustments").then((res) => res.json()),
+  ]).then(([materialsData, productsData, adjustmentsData]) => {
+    if (!materialsData.success || !productsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+    const materials = materialsData.materials;
+    const products = productsData.products;
+    const adjustments = adjustmentsData.success ? adjustmentsData.adjustments : [];
+
+    const reasonOptions = STOCK_ADJUSTMENT_REASONS.map((r) => '<option value="' + esc(r) + '">' + esc(r) + "</option>").join("");
+
+    let html = '<div class="section-card"><h2>Count Raw Materials <span class="hint">— correct stock after a physical count</span></h2>' +
+      '<div class="detail-grid" style="margin-bottom:14px;">' +
+      '<div><span>Material</span><select id="sc-material-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
+      materials.map((m) => '<option value="' + esc(m.id) + '" data-stock="' + m.stock + '">' + esc(m.name) + " (currently " + m.stock + " " + esc(m.unit) + ")</option>").join("") +
+      "</select></div>" +
+      '<div><span>Counted Stock</span><input type="number" step="0.01" id="sc-material-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Reason</span><select id="sc-material-reason" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' + reasonOptions + "</select></div>" +
+      '<div><span>Notes (optional)</span><input type="text" id="sc-material-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      "</div>" +
+      '<button id="sc-material-submit-btn" class="btn">Save Correction</button> <span id="sc-material-msg" style="font-size:12px;"></span></div>';
+
+    html += '<div class="section-card"><h2>Count Finished Products</h2>' +
+      '<div class="detail-grid" style="margin-bottom:14px;">' +
+      '<div><span>Product</span><select id="sc-product-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
+      products.map((p) => '<option value="' + esc(p.id) + '" data-stock="' + (p.quantity || 0) + '">' + esc(p.name) + " (currently " + (p.quantity || 0) + ")</option>").join("") +
+      "</select></div>" +
+      '<div><span>Counted Stock</span><input type="number" step="1" id="sc-product-qty" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Reason</span><select id="sc-product-reason" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' + reasonOptions + "</select></div>" +
+      '<div><span>Notes (optional)</span><input type="text" id="sc-product-notes" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      "</div>" +
+      '<button id="sc-product-submit-btn" class="btn">Save Correction</button> <span id="sc-product-msg" style="font-size:12px;"></span></div>';
+
+    html += '<div class="section-card"><h2>Recent Adjustments</h2>';
+    if (adjustments.length === 0) {
+      html += '<p class="empty">No adjustments logged yet.</p>';
+    } else {
+      html += '<div class="table-scroll"><table><tr><th>Date</th><th>Type</th><th>Item</th><th>Before</th><th>After</th><th>Change</th><th>Reason</th><th>By</th></tr>' +
+        adjustments.map((a) => {
+          const deltaColor = a.delta > 0 ? "#2e7d32" : a.delta < 0 ? "#c0392b" : "var(--muted)";
+          return "<tr><td>" + new Date(a.createdAt).toLocaleString() + "</td><td>" + (a.targetType === "raw_material" ? "Material" : "Product") + "</td><td>" +
+            esc(a.targetName) + "</td><td>" + a.previousQty + "</td><td>" + a.newQty + '</td><td style="color:' + deltaColor + ';font-weight:600;">' +
+            (a.delta > 0 ? "+" : "") + a.delta + "</td><td>" + esc(a.reason) + "</td><td>" + esc(a.adjustedBy) + "</td></tr>";
+        }).join("") +
+        "</table></div>";
+    }
+    html += "</div>";
+
+    root.innerHTML = html;
+
+    const materialSelect = document.getElementById("sc-material-select");
+    materialSelect.addEventListener("change", () => {
+      const opt = materialSelect.options[materialSelect.selectedIndex];
+      document.getElementById("sc-material-qty").value = opt.value ? opt.getAttribute("data-stock") : "";
+    });
+
+    document.getElementById("sc-material-submit-btn").addEventListener("click", () => {
+      const msg = document.getElementById("sc-material-msg");
+      const materialId = materialSelect.value;
+      const newStock = document.getElementById("sc-material-qty").value;
+      if (!materialId || newStock === "") { msg.textContent = "Choose a material and enter a counted stock."; msg.style.color = "#c0392b"; return; }
+
+      msg.textContent = "Saving…";
+      msg.style.color = "var(--muted)";
+      fetch("/api/admin/production/stock-adjustments/raw-material", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materialId,
+          newStock,
+          reason: document.getElementById("sc-material-reason").value,
+          notes: document.getElementById("sc-material-notes").value.trim(),
+        }),
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            renderStockCount();
+            renderRawMaterials();
+            renderProductionCapacity();
+          } else {
+            msg.textContent = result.error || "Failed.";
+            msg.style.color = "#c0392b";
+          }
+        })
+        .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+    });
+
+    const productSelect = document.getElementById("sc-product-select");
+    productSelect.addEventListener("change", () => {
+      const opt = productSelect.options[productSelect.selectedIndex];
+      document.getElementById("sc-product-qty").value = opt.value ? opt.getAttribute("data-stock") : "";
+    });
+
+    document.getElementById("sc-product-submit-btn").addEventListener("click", () => {
+      const msg = document.getElementById("sc-product-msg");
+      const productId = productSelect.value;
+      const newQuantity = document.getElementById("sc-product-qty").value;
+      if (!productId || newQuantity === "") { msg.textContent = "Choose a product and enter a counted stock."; msg.style.color = "#c0392b"; return; }
+
+      msg.textContent = "Saving…";
+      msg.style.color = "var(--muted)";
+      fetch("/api/admin/production/stock-adjustments/product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId,
+          newQuantity,
+          reason: document.getElementById("sc-product-reason").value,
+          notes: document.getElementById("sc-product-notes").value.trim(),
+        }),
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            renderStockCount();
+            renderProducts();
+          } else {
+            msg.textContent = result.error || "Failed.";
+            msg.style.color = "#c0392b";
+          }
+        })
+        .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+    });
+  }).catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
 function renderProducts() {
   const root = document.getElementById("products-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -2201,6 +2337,7 @@ function init() {
         renderSuppliers();
         renderPurchases();
         renderCashLedger();
+        renderStockCount();
         renderActivity();
       }
       renderBostaSummary();

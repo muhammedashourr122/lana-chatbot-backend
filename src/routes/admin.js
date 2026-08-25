@@ -29,6 +29,7 @@ const productionRunsStore = require("../lib/production-runs-store");
 const suppliersStore = require("../lib/suppliers-store");
 const purchasesStore = require("../lib/purchases-store");
 const cashLedgerStore = require("../lib/cash-ledger-store");
+const stockAdjustmentsStore = require("../lib/stock-adjustments-store");
 
 const router = express.Router();
 
@@ -1355,6 +1356,87 @@ router.post("/production/cash-ledger", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Log cash entry error:", error.message);
     res.status(500).json({ success: false, error: "Unable to log cash entry" });
+  }
+});
+
+// ---------------- Stock Adjustments / Counts ----------------
+
+router.get("/production/stock-adjustments", requireOwner, async (req, res) => {
+  try {
+    const adjustments = await stockAdjustmentsStore.getStockAdjustments(50);
+    res.json({ success: true, adjustments });
+  } catch (error) {
+    console.error("Get stock adjustments error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load stock adjustments" });
+  }
+});
+
+router.post("/production/stock-adjustments/raw-material", requireOwner, async (req, res) => {
+  try {
+    const { materialId, newStock, reason, notes } = req.body || {};
+    const newQty = Number(newStock);
+    if (!materialId || !Number.isFinite(newQty) || newQty < 0) {
+      return res.status(400).json({ success: false, error: "materialId and a non-negative newStock are required" });
+    }
+    if (!reason) return res.status(400).json({ success: false, error: "A reason is required" });
+
+    const materials = await rawMaterialsStore.getRawMaterials();
+    const material = materials.find((m) => m.id === materialId);
+    if (!material) return res.status(404).json({ success: false, error: "Material not found" });
+
+    const previousQty = material.stock;
+    await rawMaterialsStore.updateRawMaterial(materialId, { stock: newQty });
+
+    const adjustment = await stockAdjustmentsStore.logStockAdjustment({
+      targetType: "raw_material",
+      targetId: material.id,
+      targetName: material.name,
+      previousQty,
+      newQty,
+      delta: newQty - previousQty,
+      reason,
+      notes: notes || null,
+      adjustedBy: req.user.username,
+    });
+
+    logActivity(req.user.username, "stock_adjustment", { target: material.name, previous: previousQty, new: newQty, reason });
+    res.json({ success: true, adjustment });
+  } catch (error) {
+    console.error("Raw material stock adjustment error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to adjust stock" });
+  }
+});
+
+router.post("/production/stock-adjustments/product", requireOwner, async (req, res) => {
+  try {
+    const { productId, newQuantity, reason, notes } = req.body || {};
+    const newQty = Number(newQuantity);
+    if (!productId || !Number.isFinite(newQty) || newQty < 0) {
+      return res.status(400).json({ success: false, error: "productId and a non-negative newQuantity are required" });
+    }
+    if (!reason) return res.status(400).json({ success: false, error: "A reason is required" });
+
+    const product = await getProduct(productId);
+    const previousQty = product.quantity || 0;
+    await updateProduct(productId, { quantity: newQty });
+
+    const adjustment = await stockAdjustmentsStore.logStockAdjustment({
+      targetType: "product",
+      targetId: productId,
+      targetName: product.name,
+      previousQty,
+      newQty,
+      delta: newQty - previousQty,
+      reason,
+      notes: notes || null,
+      adjustedBy: req.user.username,
+    });
+
+    logActivity(req.user.username, "stock_adjustment", { target: product.name, previous: previousQty, new: newQty, reason });
+    res.json({ success: true, adjustment });
+  } catch (error) {
+    console.error("Product stock adjustment error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to adjust stock" });
   }
 });
 
