@@ -1,6 +1,9 @@
 const express = require("express");
 const {
   getProducts,
+  updateProduct,
+  getCategories,
+  createCategory,
   getOrder,
   getOrderByShortId,
   updateOrderStatus,
@@ -668,6 +671,79 @@ router.post("/homepage-content", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Save homepage content error:", error.message);
     res.status(500).json({ success: false, error: "Unable to save homepage content" });
+  }
+});
+
+// ---- Owner-only: product catalog editing (price, sale price, stock) ----
+
+router.get("/products", requireOwner, async (req, res) => {
+  try {
+    const data = await getProducts({ limit: 200 });
+    const products = data.data || data;
+    res.json({ success: true, products });
+  } catch (error) {
+    console.error("Admin products list error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to load products" });
+  }
+});
+
+router.patch("/products/:productId", requireOwner, async (req, res) => {
+  try {
+    const { price, sale_price, quantity } = req.body || {};
+    const fields = {};
+
+    if (price !== undefined) {
+      const n = Number(price);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success: false, error: "price must be a non-negative number" });
+      fields.price = n;
+    }
+    if (sale_price !== undefined) {
+      const n = Number(sale_price);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success: false, error: "sale_price must be a non-negative number" });
+      fields.sale_price = n;
+    }
+    if (quantity !== undefined) {
+      const n = Number(quantity);
+      if (!Number.isInteger(n) || n < 0) return res.status(400).json({ success: false, error: "quantity must be a non-negative integer" });
+      fields.quantity = n;
+    }
+
+    if (Object.keys(fields).length === 0) {
+      return res.status(400).json({ success: false, error: "Nothing to update" });
+    }
+
+    const updated = await updateProduct(req.params.productId, fields);
+    res.json({ success: true, product: updated });
+  } catch (error) {
+    console.error("Update product error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to update product" });
+  }
+});
+
+// ---- Owner-only: categories ----
+
+router.get("/categories", requireOwner, async (req, res) => {
+  try {
+    const data = await getCategories();
+    const categories = data.data || data;
+    res.json({ success: true, categories });
+  } catch (error) {
+    console.error("Admin categories list error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to load categories" });
+  }
+});
+
+router.post("/categories", requireOwner, async (req, res) => {
+  try {
+    const { name, slug, show_in_header } = req.body || {};
+    if (!name || !slug) {
+      return res.status(400).json({ success: false, error: "name and slug are required" });
+    }
+    const created = await createCategory({ name, slug, show_in_header: Boolean(show_in_header) });
+    res.json({ success: true, category: created });
+  } catch (error) {
+    console.error("Create category error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to create category" });
   }
 });
 

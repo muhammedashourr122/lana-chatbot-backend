@@ -67,6 +67,17 @@ async function getCategories() {
   return easyOrdersGet("/categories/");
 }
 
+async function updateProduct(productId, fields) {
+  if (!productId) {
+    throw new Error("productId is required");
+  }
+  return easyOrdersPatch(`/products/${productId}`, fields);
+}
+
+async function createCategory(fields) {
+  return easyOrdersPost("/categories", fields);
+}
+
 async function getOrder(orderId) {
   if (!orderId) {
     throw new Error("orderId is required");
@@ -121,7 +132,9 @@ module.exports = {
   easyOrdersPost,
   getProducts,
   getProduct,
+  updateProduct,
   getCategories,
+  createCategory,
   getOrder,
   getOrderByShortId,
   updateOrderStatus,

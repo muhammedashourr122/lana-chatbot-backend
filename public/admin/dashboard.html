@@ -34,6 +34,12 @@
       <button class="tab-btn nav-item" data-tab="orders">
         <span class="nav-icon">▤</span> Orders
       </button>
+      <button class="tab-btn nav-item" data-tab="products" id="tab-btn-products" style="display:none;">
+        <span class="nav-icon">●</span> Products
+      </button>
+      <button class="tab-btn nav-item" data-tab="categories" id="tab-btn-categories" style="display:none;">
+        <span class="nav-icon">▦</span> Categories
+      </button>
       <button class="tab-btn nav-item" data-tab="settings">
         <span class="nav-icon">⚙</span> Settings
       </button>
@@ -80,6 +86,14 @@
 
       <div class="tab-panel" data-tab-panel="orders" style="display:none;">
         <div id="orders-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="products" style="display:none;">
+        <div id="products-root"></div>
+      </div>
+
+      <div class="tab-panel" data-tab-panel="categories" style="display:none;">
+        <div id="categories-root"></div>
       </div>
 
       <div class="tab-panel" data-tab-panel="settings" style="display:none;">

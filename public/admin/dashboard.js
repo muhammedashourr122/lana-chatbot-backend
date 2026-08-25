@@ -608,6 +608,147 @@ function wireOrdersControls(data) {
   });
 }
 
+// ---------------- Products (owner-only): price, sale price, stock ----------------
+
+function renderProducts() {
+  const root = document.getElementById("products-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading products…</p></div>';
+
+  fetch("/api/admin/products")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; return; }
+
+      let html = '<div class="section-card"><h2>Products <span class="hint">— edit price, sale price, and stock directly (writes to Easy Orders)</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Product</th><th>Price</th><th>Sale Price</th><th>Stock</th><th></th></tr>';
+
+      data.products.forEach((p) => {
+        html += '<tr data-product-id="' + p.id + '">' +
+          '<td>' + esc(p.name) + '</td>' +
+          '<td><input type="number" min="0" step="0.01" class="prod-price" value="' + (p.price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><input type="number" min="0" step="0.01" class="prod-sale-price" value="' + (p.sale_price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" placeholder="none"></td>' +
+          '<td><input type="number" min="0" step="1" class="prod-quantity" value="' + (p.quantity ?? "") + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><button class="prod-save-btn btn" style="padding:6px 14px;">Save</button> <span class="prod-msg" style="font-size:12px;"></span></td>' +
+          "</tr>";
+      });
+
+      html += "</table></div></div>";
+      root.innerHTML = html;
+
+      root.querySelectorAll(".prod-save-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const productId = row.getAttribute("data-product-id");
+          const msg = row.querySelector(".prod-msg");
+          const salePriceRaw = row.querySelector(".prod-sale-price").value;
+
+          const body = {
+            price: row.querySelector(".prod-price").value,
+            quantity: row.querySelector(".prod-quantity").value,
+          };
+          if (salePriceRaw !== "") body.sale_price = salePriceRaw;
+
+          btn.disabled = true;
+          msg.textContent = "Saving…";
+          msg.style.color = "var(--muted)";
+
+          fetch("/api/admin/products/" + productId, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then((res) => res.json())
+            .then((result) => {
+              btn.disabled = false;
+              if (result.success) {
+                msg.textContent = "Saved.";
+                msg.style.color = "#2e7d32";
+              } else {
+                msg.textContent = result.error || "Failed.";
+                msg.style.color = "#c0392b";
+              }
+            })
+            .catch(() => {
+              btn.disabled = false;
+              msg.textContent = "Failed.";
+              msg.style.color = "#c0392b";
+            });
+        });
+      });
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; });
+}
+
+// ---------------- Categories (owner-only) ----------------
+
+function renderCategories() {
+  const root = document.getElementById("categories-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading categories…</p></div>';
+
+  fetch("/api/admin/categories")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load categories.</p></div>'; return; }
+
+      let html = '<div class="section-card"><h2>Categories</h2>' +
+        '<div class="table-scroll"><table><tr><th>Name</th><th>Slug</th><th>Shown in Header</th></tr>';
+
+      data.categories.forEach((c) => {
+        html += "<tr><td>" + esc(c.name) + "</td><td>" + esc(c.slug) + "</td><td>" + (c.show_in_header ? "Yes" : "No") + "</td></tr>";
+      });
+
+      html += "</table></div>" +
+        '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Add Category</h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Name</span><input type="text" id="new-cat-name" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Slug (URL-friendly, English)</span><input type="text" id="new-cat-slug" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Show in header nav</span><label style="display:flex;align-items:center;gap:8px;padding-top:6px;"><input type="checkbox" id="new-cat-show" checked> Yes</label></div>' +
+        "</div>" +
+        '<button id="add-cat-btn" class="btn">Add Category</button> <span id="add-cat-msg" style="font-size:12px;"></span></div>';
+
+      root.innerHTML = html;
+
+      document.getElementById("add-cat-btn").addEventListener("click", () => {
+        const msg = document.getElementById("add-cat-msg");
+        const name = document.getElementById("new-cat-name").value.trim();
+        const slug = document.getElementById("new-cat-slug").value.trim();
+        const show_in_header = document.getElementById("new-cat-show").checked;
+
+        if (!name || !slug) {
+          msg.textContent = "Name and slug are required.";
+          msg.style.color = "#c0392b";
+          return;
+        }
+
+        msg.textContent = "Adding…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, slug, show_in_header }),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) {
+              renderCategories();
+            } else {
+              msg.textContent = result.error || "Failed to add category.";
+              msg.style.color = "#c0392b";
+            }
+          })
+          .catch(() => {
+            msg.textContent = "Failed to add category.";
+            msg.style.color = "#c0392b";
+          });
+      });
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load categories.</p></div>'; });
+}
+
 // ---------------- Settings (owner-only) ----------------
 
 function renderSettings() {
@@ -791,6 +932,10 @@ function init() {
       if (currentUser.role === "owner") {
         document.getElementById("homepage-builder-link").style.display = "inline-flex";
         document.getElementById("tab-btn-users").style.display = "";
+        document.getElementById("tab-btn-products").style.display = "";
+        document.getElementById("tab-btn-categories").style.display = "";
+        renderProducts();
+        renderCategories();
       }
 
       return loadAll();
