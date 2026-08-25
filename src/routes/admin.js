@@ -22,6 +22,7 @@ const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
 const homepageContentStore = require("../lib/homepage-content-store");
 const { getDeliveryByTrackingNumber, getPickupsForTrackingNumbers, checkOtherBrandPackageSizes } = require("../lib/bosta");
+const { logActivity, getRecentActivity } = require("../lib/activity-log-store");
 
 const router = express.Router();
 
@@ -440,6 +441,7 @@ router.post("/orders/:orderId/notes", async (req, res) => {
       return res.status(400).json({ success: false, error: "note is required" });
     }
     await addOrderNote(req.params.orderId, `[${req.user.username}] ${note}`, "public");
+    logActivity(req.user.username, "order_note_added", { order_id: req.params.orderId, note });
     res.json({ success: true });
   } catch (error) {
     console.error("Add order note error:", error.response?.data || error.message);
@@ -642,6 +644,7 @@ router.post("/update-status", async (req, res) => {
 
     await updateOrderStatus(order_id, status);
     adminCache.invalidate("admin-data");
+    logActivity(req.user.username, "order_status_changed", { order_id, status });
     res.json({ success: true });
   } catch (error) {
     console.error("Admin status update error:", error.response?.data || error.message);
@@ -809,6 +812,7 @@ router.post("/products", requireOwner, async (req, res) => {
       quantity: quantity !== undefined ? Number(quantity) : 0,
       track_stock: Boolean(track_stock),
     });
+    logActivity(req.user.username, "product_created", { name, slug });
     res.json({ success: true, product: created });
   } catch (error) {
     console.error("Create product error:", error.response?.data || error.message);
@@ -850,6 +854,7 @@ router.patch("/products/:productId", requireOwner, async (req, res) => {
     }
 
     const updated = await updateProduct(req.params.productId, fields);
+    logActivity(req.user.username, "product_updated", { product_id: req.params.productId, fields: Object.keys(fields) });
     res.json({ success: true, product: updated });
   } catch (error) {
     console.error("Update product error:", error.response?.data || error.message);
@@ -877,10 +882,23 @@ router.post("/categories", requireOwner, async (req, res) => {
       return res.status(400).json({ success: false, error: "name and slug are required" });
     }
     const created = await createCategory({ name, slug, show_in_header: Boolean(show_in_header) });
+    logActivity(req.user.username, "category_created", { name, slug });
     res.json({ success: true, category: created });
   } catch (error) {
     console.error("Create category error:", error.response?.data || error.message);
     res.status(500).json({ success: false, error: "Unable to create category" });
+  }
+});
+
+// ---- Owner-only: team activity log ----
+
+router.get("/activity", requireOwner, async (req, res) => {
+  try {
+    const activity = await getRecentActivity(50);
+    res.json({ success: true, activity });
+  } catch (error) {
+    console.error("Activity log fetch error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load activity log" });
   }
 });
 

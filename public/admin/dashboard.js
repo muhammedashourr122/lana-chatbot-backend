@@ -197,7 +197,16 @@ function renderWeeklyDigest(data) {
   parts.push(field("Low Stock Items", lowStockCount));
   parts.push(field("Returning to You", returningCount));
 
-  return '<div class="section-card"><h2>This Week <span class="hint">— a quick pulse, not a replacement for the full tabs</span></h2>' +
+  const summaryLines = ["Lana Beauty — This Week (" + new Date().toLocaleDateString() + ")"];
+  if ("revenue" in data.stats) {
+    summaryLines.push("Revenue, last 7 days: " + money(thisWeek) + (delta != null ? " (" + (delta >= 0 ? "+" : "") + delta + "% vs prior week)" : ""));
+  }
+  summaryLines.push("Low stock items: " + lowStockCount);
+  summaryLines.push("Orders returning to you: " + returningCount);
+  window.__lanaDigestSummaryText = summaryLines.join("\n");
+
+  return '<div class="section-card"><div class="section-head"><h2>This Week <span class="hint">— a quick pulse, not a replacement for the full tabs</span></h2>' +
+    '<button id="copy-digest-btn" style="padding:6px 14px;">Copy Summary</button></div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;">' + parts.join("") + "</div></div>";
 }
 
@@ -250,6 +259,18 @@ function renderOverview(data) {
       ordersState.status = "returning_from_delivery";
       ordersState.page = 1;
       loadOrders();
+    });
+  }
+
+  const copyDigestBtn = document.getElementById("copy-digest-btn");
+  if (copyDigestBtn) {
+    copyDigestBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(window.__lanaDigestSummaryText || "").then(() => {
+        copyDigestBtn.textContent = "Copied!";
+        setTimeout(() => { copyDigestBtn.textContent = "Copy Summary"; }, 1500);
+      }).catch(() => {
+        copyDigestBtn.textContent = "Failed to copy";
+      });
     });
   }
 }
@@ -349,6 +370,18 @@ function renderTopProductsAndLowStock(topProducts, lowStock) {
 // ---------------- Orders table (paginated, unified EO + Bosta) ----------------
 
 const ordersState = { page: 1, pageSize: 25, status: "", q: "", expandedOrderId: null, selectedOrderIds: new Set(), statuses: [] };
+
+const SAVED_VIEWS_KEY = "lana-saved-order-views";
+function getSavedOrderViews() {
+  try {
+    return JSON.parse(localStorage.getItem(SAVED_VIEWS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+function setSavedOrderViews(views) {
+  localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(views));
+}
 
 function statusBadge(status, bosta) {
   let cls = "neutral";
@@ -644,22 +677,30 @@ function renderCourierPerformance(ok) {
 function renderGovernorateAccuracy(ok) {
   const byGov = {};
   ok.forEach((r) => {
-    if (typeof r.result.shipmentFees !== "number" || typeof r.order.shipping_cost !== "number") return;
     const gov = r.order.government || "Unknown";
-    if (!byGov[gov]) byGov[gov] = { count: 0, chargedSum: 0, billedSum: 0 };
+    if (!byGov[gov]) byGov[gov] = { count: 0, chargedSum: 0, billedSum: 0, priceCount: 0, slaBreaches: 0 };
     byGov[gov].count++;
-    byGov[gov].chargedSum += r.order.shipping_cost;
-    byGov[gov].billedSum += r.result.shipmentFees;
+    if (r.result.slaBreached) byGov[gov].slaBreaches++;
+    if (typeof r.result.shipmentFees === "number" && typeof r.order.shipping_cost === "number") {
+      byGov[gov].priceCount++;
+      byGov[gov].chargedSum += r.order.shipping_cost;
+      byGov[gov].billedSum += r.result.shipmentFees;
+    }
   });
 
   const govs = Object.keys(byGov);
   if (govs.length === 0) return "";
 
-  return '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Shipping Accuracy by Governorate <span class="hint">— from this scan only, not your full order history</span></h3>' +
-    '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Avg Charged</th><th>Avg Billed by Bosta</th></tr>' +
+  return '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Shipping Accuracy &amp; SLA by Governorate <span class="hint">— from this scan only, not your full order history</span></h3>' +
+    '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Avg Charged</th><th>Avg Billed by Bosta</th><th>SLA Breach Rate</th></tr>' +
     govs.map((g) => {
       const d = byGov[g];
-      return "<tr><td>" + esc(g) + "</td><td>" + d.count + "</td><td>" + money(Math.round(d.chargedSum / d.count)) + "</td><td>" + money(Math.round(d.billedSum / d.count)) + "</td></tr>";
+      const slaRate = Math.round((d.slaBreaches / d.count) * 100);
+      return "<tr><td>" + esc(g) + "</td><td>" + d.count + "</td><td>" +
+        (d.priceCount > 0 ? money(Math.round(d.chargedSum / d.priceCount)) : "—") + "</td><td>" +
+        (d.priceCount > 0 ? money(Math.round(d.billedSum / d.priceCount)) : "—") + "</td><td>" +
+        (d.slaBreaches > 0 ? '<span class="badge attn">' + slaRate + "%</span>" : "0%") +
+        "</td></tr>";
     }).join("") +
     "</table></div>";
 }
@@ -675,6 +716,10 @@ function renderOrders(data) {
     '<select id="status-filter"><option value="">All statuses</option>' +
     VALID_STATUSES.map((s) => '<option value="' + s + '" ' + (ordersState.status === s ? "selected" : "") + ">" + s + "</option>").join("") +
     "</select>" +
+    '<select id="saved-views-select"><option value="">— Saved Views —</option>' +
+    getSavedOrderViews().map((v, i) => '<option value="' + i + '">' + esc(v.name) + "</option>").join("") +
+    "</select>" +
+    '<button id="save-view-btn" title="Save current search + status filter">Save View</button>' +
     '<button id="export-btn">Export CSV</button>' +
     "</div></div>";
 
@@ -838,6 +883,25 @@ function wireOrdersControls(data) {
       ordersState.page = 1;
       loadOrders();
     }, 300);
+  });
+
+  document.getElementById("saved-views-select").addEventListener("change", (e) => {
+    if (e.target.value === "") return;
+    const view = getSavedOrderViews()[Number(e.target.value)];
+    if (!view) return;
+    ordersState.status = view.status;
+    ordersState.q = view.q;
+    ordersState.page = 1;
+    loadOrders();
+  });
+
+  document.getElementById("save-view-btn").addEventListener("click", () => {
+    const name = prompt("Name this view (e.g. \"Pending Cairo orders\"):");
+    if (!name) return;
+    const views = getSavedOrderViews();
+    views.push({ name, status: ordersState.status, q: ordersState.q });
+    setSavedOrderViews(views);
+    loadOrders();
   });
 
   const exportBtn = document.getElementById("export-btn");
@@ -1250,6 +1314,57 @@ function renderSettings() {
 
 // ---------------- Users management (owner-only) ----------------
 
+// ---------------- Activity log (owner-only) ----------------
+
+function describeActivity(entry) {
+  const d = entry.details || {};
+  switch (entry.action) {
+    case "order_status_changed":
+      return "changed order status to \"" + esc(d.status) + "\"";
+    case "order_note_added":
+      return "added a note: “" + esc((d.note || "").slice(0, 80)) + (d.note && d.note.length > 80 ? "…" : "") + "”";
+    case "product_created":
+      return "created product \"" + esc(d.name) + "\"";
+    case "product_updated":
+      return "updated product (" + esc((d.fields || []).join(", ")) + ")";
+    case "category_created":
+      return "created category \"" + esc(d.name) + "\"";
+    default:
+      return esc(entry.action);
+  }
+}
+
+function renderActivity() {
+  const root = document.getElementById("activity-root");
+  if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
+
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  fetch("/api/admin/activity")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load activity.</p></div>'; return; }
+
+      if (data.activity.length === 0) {
+        root.innerHTML = '<div class="section-card"><h2>Team Activity</h2><p class="empty">Nothing logged yet.</p></div>';
+        return;
+      }
+
+      const html = '<div class="section-card"><h2>Team Activity <span class="hint">— last ' + data.activity.length + ' actions across the team</span></h2>' +
+        '<ul class="od-timeline" style="list-style:none;margin:0;padding:0;">' +
+        data.activity.map((entry) =>
+          '<li style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+          '<strong>' + esc(entry.username) + '</strong> ' + describeActivity(entry) +
+          '<div style="color:var(--muted);font-size:11px;margin-top:2px;">' + new Date(entry.at).toLocaleString() + '</div>' +
+          '</li>'
+        ).join("") +
+        "</ul></div>";
+
+      root.innerHTML = html;
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load activity.</p></div>'; });
+}
+
 function renderUsers() {
   const root = document.getElementById("users-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -1377,8 +1492,10 @@ function init() {
         document.getElementById("tab-btn-users").style.display = "";
         document.getElementById("tab-btn-products").style.display = "";
         document.getElementById("tab-btn-categories").style.display = "";
+        document.getElementById("tab-btn-activity").style.display = "";
         renderProducts();
         renderCategories();
+        renderActivity();
       }
       renderBostaSummary();
       wirePickupsTabLazyLoad();
