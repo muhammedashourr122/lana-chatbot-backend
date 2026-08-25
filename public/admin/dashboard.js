@@ -324,6 +324,99 @@ function exportCsv(orders) {
   URL.revokeObjectURL(url);
 }
 
+// ---------------- Bosta summary (manual refresh) ----------------
+// Scans a bounded set of your own recent orders (never Bosta's raw
+// account-wide endpoints, which mix in other brands under the same
+// Bosta account) via the existing per-order live-lookup route, and
+// rolls up SLA breaches + upcoming COD cashouts. Manual trigger only —
+// this is N Bosta API calls, not something to run on every page load.
+
+const BOSTA_SUMMARY_SCAN_LIMIT = 25;
+
+function renderBostaSummary() {
+  const root = document.getElementById("bosta-summary-root");
+  root.innerHTML = '<div class="section-card">' +
+    '<div class="section-head"><h2>Bosta Summary <span class="hint">— SLA compliance &amp; upcoming COD cashouts, scanned from your recent orders</span></h2>' +
+    '<button id="bosta-summary-refresh-btn" class="btn">Refresh Bosta Summary</button></div>' +
+    '<div id="bosta-summary-body"><p class="empty">Click refresh to scan your last ' + BOSTA_SUMMARY_SCAN_LIMIT + ' orders with Bosta tracking.</p></div>' +
+    "</div>";
+
+  document.getElementById("bosta-summary-refresh-btn").addEventListener("click", runBostaSummaryScan);
+}
+
+function runBostaSummaryScan() {
+  const btn = document.getElementById("bosta-summary-refresh-btn");
+  const body = document.getElementById("bosta-summary-body");
+  btn.disabled = true;
+  body.innerHTML = '<p class="empty">Loading recent orders…</p>';
+
+  fetch("/api/admin/orders?page=1&page_size=100")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) throw new Error("orders fetch failed");
+      const withTracking = data.orders.filter((o) => o.bosta && o.bosta.tracking_number).slice(0, BOSTA_SUMMARY_SCAN_LIMIT);
+
+      if (withTracking.length === 0) {
+        btn.disabled = false;
+        body.innerHTML = '<p class="empty">No recent orders have Bosta tracking yet.</p>';
+        return;
+      }
+
+      body.innerHTML = '<p class="empty">Scanning ' + withTracking.length + ' orders via Bosta…</p>';
+
+      return Promise.all(
+        withTracking.map((o) =>
+          fetch("/api/admin/orders/" + o.order_id + "/bosta-live")
+            .then((res) => res.json())
+            .then((result) => ({ order: o, result }))
+            .catch(() => ({ order: o, result: { success: false } }))
+        )
+      ).then((rows) => {
+        btn.disabled = false;
+        renderBostaSummaryResults(body, rows);
+      });
+    })
+    .catch(() => {
+      btn.disabled = false;
+      body.innerHTML = '<p class="empty">Failed to load. Try again.</p>';
+    });
+}
+
+function renderBostaSummaryResults(body, rows) {
+  const ok = rows.filter((r) => r.result.success);
+  const breached = ok.filter((r) => r.result.slaBreached);
+  const upcomingCashouts = ok
+    .filter((r) => r.result.nextCashoutDate)
+    .map((r) => ({ order: r.order, date: r.result.nextCashoutDate }))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let html = '<div class="stats-row" style="margin-bottom:16px;">' +
+    '<div class="stat-card"><div class="num">' + ok.length + '</div><div class="label">Orders Scanned</div></div>' +
+    '<div class="stat-card"><div class="num">' + breached.length + '</div><div class="label">SLA Breached</div></div>' +
+    '<div class="stat-card"><div class="num">' + upcomingCashouts.length + '</div><div class="label">Upcoming Cashouts</div></div>' +
+    "</div>";
+
+  if (breached.length > 0) {
+    html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">SLA Breached</h3>' +
+      '<div class="table-scroll" style="margin-bottom:16px;"><table><tr><th>Order #</th><th>Customer</th><th>Live State</th></tr>' +
+      breached.map((r) => "<tr><td>" + esc(r.order.short_id) + "</td><td>" + esc(r.order.full_name) + "</td><td>" + esc((r.result.state && r.result.state.value) || "—") + "</td></tr>").join("") +
+      "</table></div>";
+  }
+
+  if (upcomingCashouts.length > 0) {
+    html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">Upcoming COD Cashouts</h3>' +
+      '<div class="table-scroll"><table><tr><th>Order #</th><th>Customer</th><th>Cashout Date</th></tr>' +
+      upcomingCashouts.map((r) => "<tr><td>" + esc(r.order.short_id) + "</td><td>" + esc(r.order.full_name) + "</td><td>" + new Date(r.date).toLocaleDateString() + "</td></tr>").join("") +
+      "</table></div>";
+  }
+
+  if (breached.length === 0 && upcomingCashouts.length === 0) {
+    html += '<p class="empty">No SLA breaches and no upcoming cashouts among the scanned orders.</p>';
+  }
+
+  body.innerHTML = html;
+}
+
 function renderOrders(data) {
   const root = document.getElementById("orders-root");
   const totalPages = Math.max(1, Math.ceil(data.total / data.page_size));
@@ -937,6 +1030,7 @@ function init() {
         renderProducts();
         renderCategories();
       }
+      renderBostaSummary();
 
       return loadAll();
     })
