@@ -821,25 +821,42 @@ function renderProducts() {
 
   root.innerHTML = '<div class="section-card"><p class="empty">Loading products…</p></div>';
 
-  fetch("/api/admin/products")
-    .then((res) => res.json())
-    .then((data) => {
-      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; return; }
+  Promise.all([
+    fetch("/api/admin/products").then((res) => res.json()),
+    fetch("/api/admin/categories").then((res) => res.json()),
+  ])
+    .then(([productsData, categoriesData]) => {
+      if (!productsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; return; }
+      const categories = categoriesData.success ? categoriesData.categories : [];
 
-      let html = '<div class="section-card"><h2>Products <span class="hint">— edit price, sale price, and stock directly (writes to Easy Orders)</span></h2>' +
-        '<div class="table-scroll"><table><tr><th>Product</th><th>Price</th><th>Sale Price</th><th>Stock</th><th></th></tr>';
+      let html = '<div class="section-card"><h2>Products <span class="hint">— edit price, sale price, stock, and categories directly (writes to Easy Orders)</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Product</th><th>Price</th><th>Sale Price</th><th>Stock</th><th>Add Category</th><th></th></tr>';
 
-      data.products.forEach((p) => {
+      productsData.products.forEach((p) => {
         html += '<tr data-product-id="' + p.id + '">' +
           '<td>' + esc(p.name) + '</td>' +
           '<td><input type="number" min="0" step="0.01" class="prod-price" value="' + (p.price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
           '<td><input type="number" min="0" step="0.01" class="prod-sale-price" value="' + (p.sale_price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" placeholder="none"></td>' +
           '<td><input type="number" min="0" step="1" class="prod-quantity" value="' + (p.quantity ?? "") + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><select class="prod-add-category" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— pick —</option>' +
+            categories.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>').join("") +
+            '</select> <button class="prod-add-category-btn" style="padding:6px 10px;">Add</button></td>' +
           '<td><button class="prod-save-btn btn" style="padding:6px 14px;">Save</button> <span class="prod-msg" style="font-size:12px;"></span></td>' +
           "</tr>";
       });
 
-      html += "</table></div></div>";
+      html += "</table></div>" +
+        '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Add Product</h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Name</span><input type="text" id="new-prod-name" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Slug (URL-friendly, English)</span><input type="text" id="new-prod-slug" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Price</span><input type="number" min="0" step="0.01" id="new-prod-price" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Thumbnail Image URL</span><input type="text" id="new-prod-thumb" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Starting Stock</span><input type="number" min="0" step="1" id="new-prod-quantity" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Track Stock</span><label style="display:flex;align-items:center;gap:8px;padding-top:6px;"><input type="checkbox" id="new-prod-track-stock" checked> Yes</label></div>' +
+        "</div>" +
+        '<button id="add-prod-btn" class="btn">Add Product</button> <span id="add-prod-msg" style="font-size:12px;"></span></div>';
+
       root.innerHTML = html;
 
       root.querySelectorAll(".prod-save-btn").forEach((btn) => {
@@ -881,6 +898,90 @@ function renderProducts() {
               msg.style.color = "#c0392b";
             });
         });
+      });
+
+      root.querySelectorAll(".prod-add-category-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const productId = row.getAttribute("data-product-id");
+          const select = row.querySelector(".prod-add-category");
+          const categoryId = select.value;
+          const msg = row.querySelector(".prod-msg");
+          if (!categoryId) return;
+
+          btn.disabled = true;
+          msg.textContent = "Adding…";
+          msg.style.color = "var(--muted)";
+
+          // Fetch current categories first so we only ever add, never
+          // accidentally wipe out categories already assigned.
+          fetch("/api/admin/products/" + productId)
+            .then((res) => res.json())
+            .then((detail) => {
+              if (!detail.success) throw new Error(detail.error || "Failed to load product");
+              const existingIds = (detail.product.categories || []).map((c) => c.id);
+              const newIds = existingIds.includes(categoryId) ? existingIds : [...existingIds, categoryId];
+
+              return fetch("/api/admin/products/" + productId, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ categories: newIds }),
+              }).then((res) => res.json());
+            })
+            .then((result) => {
+              btn.disabled = false;
+              if (result.success) {
+                msg.textContent = "Category added.";
+                msg.style.color = "#2e7d32";
+                select.value = "";
+              } else {
+                msg.textContent = result.error || "Failed.";
+                msg.style.color = "#c0392b";
+              }
+            })
+            .catch((err) => {
+              btn.disabled = false;
+              msg.textContent = err.message || "Failed.";
+              msg.style.color = "#c0392b";
+            });
+        });
+      });
+
+      document.getElementById("add-prod-btn").addEventListener("click", () => {
+        const msg = document.getElementById("add-prod-msg");
+        const name = document.getElementById("new-prod-name").value.trim();
+        const slug = document.getElementById("new-prod-slug").value.trim();
+        const price = document.getElementById("new-prod-price").value;
+        const thumb = document.getElementById("new-prod-thumb").value.trim();
+        const quantity = document.getElementById("new-prod-quantity").value;
+        const track_stock = document.getElementById("new-prod-track-stock").checked;
+
+        if (!name || !slug || price === "") {
+          msg.textContent = "Name, slug, and price are required.";
+          msg.style.color = "#c0392b";
+          return;
+        }
+
+        msg.textContent = "Adding…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/products", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, slug, price, thumb, quantity, track_stock }),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) {
+              renderProducts();
+            } else {
+              msg.textContent = result.error || "Failed to add product.";
+              msg.style.color = "#c0392b";
+            }
+          })
+          .catch(() => {
+            msg.textContent = "Failed to add product.";
+            msg.style.color = "#c0392b";
+          });
       });
     })
     .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; });

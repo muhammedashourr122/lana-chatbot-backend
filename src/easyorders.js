@@ -74,6 +74,10 @@ async function updateProduct(productId, fields) {
   return easyOrdersPatch(`/products/${productId}`, fields);
 }
 
+async function createProduct(fields) {
+  return easyOrdersPost("/products", fields);
+}
+
 async function createCategory(fields) {
   return easyOrdersPost("/categories", fields);
 }
@@ -133,6 +137,7 @@ module.exports = {
   getProducts,
   getProduct,
   updateProduct,
+  createProduct,
   getCategories,
   createCategory,
   getOrder,

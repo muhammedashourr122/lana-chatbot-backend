@@ -1,7 +1,9 @@
 const express = require("express");
 const {
   getProducts,
+  getProduct,
   updateProduct,
+  createProduct,
   getCategories,
   createCategory,
   getOrder,
@@ -759,9 +761,43 @@ router.get("/products", requireOwner, async (req, res) => {
   }
 });
 
+router.get("/products/:productId", requireOwner, async (req, res) => {
+  try {
+    const product = await getProduct(req.params.productId);
+    res.json({ success: true, product });
+  } catch (error) {
+    console.error("Get product error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to load product" });
+  }
+});
+
+router.post("/products", requireOwner, async (req, res) => {
+  try {
+    const { name, price, slug, thumb, quantity, track_stock } = req.body || {};
+    if (!name || !slug || price === undefined) {
+      return res.status(400).json({ success: false, error: "name, slug, and price are required" });
+    }
+    const n = Number(price);
+    if (!Number.isFinite(n) || n < 0) return res.status(400).json({ success: false, error: "price must be a non-negative number" });
+
+    const created = await createProduct({
+      name,
+      slug,
+      price: n,
+      thumb: thumb || undefined,
+      quantity: quantity !== undefined ? Number(quantity) : 0,
+      track_stock: Boolean(track_stock),
+    });
+    res.json({ success: true, product: created });
+  } catch (error) {
+    console.error("Create product error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to create product" });
+  }
+});
+
 router.patch("/products/:productId", requireOwner, async (req, res) => {
   try {
-    const { price, sale_price, quantity } = req.body || {};
+    const { price, sale_price, quantity, categories } = req.body || {};
     const fields = {};
 
     if (price !== undefined) {
@@ -778,6 +814,10 @@ router.patch("/products/:productId", requireOwner, async (req, res) => {
       const n = Number(quantity);
       if (!Number.isInteger(n) || n < 0) return res.status(400).json({ success: false, error: "quantity must be a non-negative integer" });
       fields.quantity = n;
+    }
+    if (categories !== undefined) {
+      if (!Array.isArray(categories)) return res.status(400).json({ success: false, error: "categories must be an array of category ids" });
+      fields.categories = categories.map((id) => ({ id }));
     }
 
     if (Object.keys(fields).length === 0) {
