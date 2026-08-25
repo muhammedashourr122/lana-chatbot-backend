@@ -23,7 +23,7 @@ async function saveRawMaterials(materials) {
   return materials;
 }
 
-async function createRawMaterial({ name, unit, stock, costPerUnit, lowStockThreshold, supplierId }) {
+async function createRawMaterial({ name, unit, stock, costPerUnit, lowStockThreshold, supplierId, category, productId, productName }) {
   const materials = await getRawMaterials();
   const material = {
     id: crypto.randomUUID(),
@@ -33,6 +33,14 @@ async function createRawMaterial({ name, unit, stock, costPerUnit, lowStockThres
     costPerUnit: Number(costPerUnit) || 0,
     lowStockThreshold: Number(lowStockThreshold) || 0,
     supplierId: supplierId || null,
+    // Shared materials (bottles, caps, alcohol) leave these null. Materials
+    // that are unique per product (stickers, scent oils) set category so
+    // they can be grouped/filtered instead of drowning the flat list, and
+    // productId/productName so the recipe editor can offer a quick-add
+    // shortcut scoped to the product being worked on.
+    category: category || "General",
+    productId: productId || null,
+    productName: productName || null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };

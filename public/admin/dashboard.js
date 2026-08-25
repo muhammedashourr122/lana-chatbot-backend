@@ -1046,18 +1046,32 @@ function renderRawMaterials() {
   const root = document.getElementById("raw-materials-root");
   root.innerHTML = '<div class="section-card"><p class="empty">Loading materials…</p></div>';
 
-  fetch("/api/admin/production/raw-materials")
-    .then((res) => res.json())
-    .then((data) => {
+  Promise.all([
+    fetch("/api/admin/production/raw-materials").then((res) => res.json()),
+    fetch("/api/admin/products").then((res) => res.json()),
+  ]).then(([data, productsData]) => {
       if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load materials.</p></div>'; return; }
+      const products = productsData.success ? productsData.products : [];
 
-      let html = '<div class="section-card"><h2>Raw Materials</h2>' +
-        '<div class="table-scroll"><table><tr><th>Material</th><th>Unit</th><th>Stock</th><th>Cost / Unit</th><th>Low Stock At</th><th></th></tr>';
+      const categories = Array.from(new Set(data.materials.map((m) => m.category || "General"))).sort();
+
+      let html = '<div class="section-card"><h2>Raw Materials <span class="hint">— shared materials (bottles, caps, alcohol) plus per-product ones (stickers, scents)</span></h2>';
+
+      if (categories.length > 1) {
+        html += '<div style="margin-bottom:12px;"><select id="mat-category-filter" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);">' +
+          '<option value="">All categories</option>' +
+          categories.map((c) => '<option value="' + esc(c) + '">' + esc(c) + "</option>").join("") +
+          "</select></div>";
+      }
+
+      html += '<div class="table-scroll"><table><tr><th>Material</th><th>Category</th><th>For Product</th><th>Unit</th><th>Stock</th><th>Cost / Unit</th><th>Low Stock At</th><th></th></tr>';
 
       data.materials.forEach((m) => {
         const low = m.stock <= m.lowStockThreshold;
-        html += '<tr data-material-id="' + m.id + '"' + (low ? ' class="attention"' : "") + '>' +
+        html += '<tr data-material-id="' + m.id + '" data-category="' + esc(m.category || "General") + '"' + (low ? ' class="attention"' : "") + '>' +
           '<td>' + esc(m.name) + '</td>' +
+          '<td>' + esc(m.category || "General") + '</td>' +
+          '<td>' + (m.productName ? '<span class="badge neutral">' + esc(m.productName) + '</span>' : "—") + '</td>' +
           '<td><input type="text" class="mat-unit" value="' + esc(m.unit) + '" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
           '<td><input type="number" step="0.01" class="mat-stock" value="' + m.stock + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
           '<td><input type="number" step="0.01" class="mat-cost" value="' + m.costPerUnit + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
@@ -1068,8 +1082,13 @@ function renderRawMaterials() {
 
       html += "</table></div>" +
         '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Add Raw Material</h3>' +
+        '<p class="hint" style="margin:0 0 10px;">For a material that\'s unique to one product (a sticker or scent), pick the product below instead of adding it here one by one — the Recipes tab has a faster shortcut for that.</p>' +
         '<div class="detail-grid" style="margin-bottom:14px;">' +
         '<div><span>Name</span><input type="text" id="new-mat-name" placeholder="e.g. Glass Bottle 236ml" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Category</span><input type="text" id="new-mat-category" list="mat-category-list" placeholder="Bottle / Cap / Sticker / Scent / Alcohol" value="General" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+        '<datalist id="mat-category-list">' + categories.map((c) => '<option value="' + esc(c) + '">').join("") + '<option value="Bottle"><option value="Cap"><option value="Sticker"><option value="Scent"><option value="Alcohol"></datalist></div>' +
+        '<div><span>For Product (optional)</span><select id="new-mat-product" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— shared material —</option>' +
+        products.map((p) => '<option value="' + esc(p.id) + '" data-name="' + esc(p.name) + '">' + esc(p.name) + "</option>").join("") + "</select></div>" +
         '<div><span>Unit</span><input type="text" id="new-mat-unit" placeholder="piece / ml / gram" value="piece" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
         '<div><span>Starting Stock</span><input type="number" step="0.01" id="new-mat-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
         '<div><span>Cost per Unit</span><input type="number" step="0.01" id="new-mat-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
@@ -1078,6 +1097,16 @@ function renderRawMaterials() {
         '<button id="add-mat-btn" class="btn">Add Material</button> <span id="add-mat-msg" style="font-size:12px;"></span></div>';
 
       root.innerHTML = html;
+
+      const filterSelect = document.getElementById("mat-category-filter");
+      if (filterSelect) {
+        filterSelect.addEventListener("change", () => {
+          const val = filterSelect.value;
+          root.querySelectorAll("tr[data-material-id]").forEach((row) => {
+            row.style.display = !val || row.getAttribute("data-category") === val ? "" : "none";
+          });
+        });
+      }
 
       root.querySelectorAll(".mat-save-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -1132,8 +1161,13 @@ function renderRawMaterials() {
         const name = document.getElementById("new-mat-name").value.trim();
         if (!name) { msg.textContent = "Name is required."; msg.style.color = "#c0392b"; return; }
 
+        const productSelect = document.getElementById("new-mat-product");
+        const productOption = productSelect.options[productSelect.selectedIndex];
         const body = {
           name,
+          category: document.getElementById("new-mat-category").value.trim() || "General",
+          productId: productSelect.value || null,
+          productName: productSelect.value ? productOption.getAttribute("data-name") : null,
           unit: document.getElementById("new-mat-unit").value.trim() || "piece",
           stock: document.getElementById("new-mat-stock").value,
           costPerUnit: document.getElementById("new-mat-cost").value,
@@ -1182,7 +1216,8 @@ function renderRecipes() {
     document.getElementById("recipe-product-select").addEventListener("change", (e) => {
       const productId = e.target.value;
       if (!productId) { document.getElementById("recipe-editor").innerHTML = ""; return; }
-      loadRecipeEditor(productId, materials);
+      const product = products.find((p) => p.id === productId);
+      loadRecipeEditor(productId, materials, product ? product.name : "");
     });
   }).catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load — network or server error.</p></div>'; });
 }
@@ -1197,25 +1232,35 @@ function recipeRowHtml(materials, selectedMaterialId, quantityPerUnit) {
     "</div>";
 }
 
-function loadRecipeEditor(productId, materials) {
+function quickAddMaterialFormHtml(productName) {
+  return '<div id="quick-add-mat-form" style="border:1px dashed var(--border);border-radius:8px;padding:12px;margin:10px 0;">' +
+    '<div class="detail-grid" style="margin-bottom:10px;">' +
+    '<div><span>Name</span><input type="text" id="qam-name" value="Sticker — ' + esc(productName) + '" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+    '<div><span>Category</span><select id="qam-category" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="Sticker">Sticker</option><option value="Scent">Scent</option><option value="Other">Other</option></select></div>' +
+    '<div><span>Unit</span><input type="text" id="qam-unit" value="piece" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+    '<div><span>Starting Stock</span><input type="number" step="0.01" id="qam-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+    '<div><span>Cost per Unit</span><input type="number" step="0.01" id="qam-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+    "</div>" +
+    '<button type="button" id="qam-submit-btn" class="btn">Create &amp; Add to Recipe</button> <button type="button" id="qam-cancel-btn" style="padding:6px 12px;">Cancel</button> <span id="qam-msg" style="font-size:12px;"></span>' +
+    "</div>";
+}
+
+function loadRecipeEditor(productId, materials, productName) {
   const editor = document.getElementById("recipe-editor");
   editor.innerHTML = '<p class="empty">Loading recipe…</p>';
-
-  if (materials.length === 0) {
-    editor.innerHTML = '<p class="empty">Add at least one raw material first.</p>';
-    return;
-  }
 
   fetch("/api/admin/production/recipes/" + productId)
     .then((res) => res.json())
     .then((data) => {
       if (!data.success) { editor.innerHTML = '<p class="empty">Failed to load recipe.</p>'; return; }
 
-      const rows = data.ingredients.length > 0 ? data.ingredients : [{ materialId: materials[0].id, quantityPerUnit: "" }];
+      const rows = data.ingredients.length > 0 ? data.ingredients : (materials.length > 0 ? [{ materialId: materials[0].id, quantityPerUnit: "" }] : []);
       editor.innerHTML = '<div id="recipe-rows">' +
         rows.map((r) => recipeRowHtml(materials, r.materialId, r.quantityPerUnit)).join("") +
         "</div>" +
-        '<button type="button" id="recipe-add-row-btn" style="padding:6px 12px;margin-top:4px;">+ Add Ingredient</button>' +
+        (materials.length > 0 ? '<button type="button" id="recipe-add-row-btn" style="padding:6px 12px;margin-top:4px;">+ Add Ingredient</button> ' : "") +
+        '<button type="button" id="recipe-quick-add-btn" style="padding:6px 12px;margin-top:4px;">+ New material for this product</button>' +
+        '<div id="quick-add-mat-container"></div>' +
         '<div style="margin-top:14px;"><button id="recipe-save-btn" class="btn">Save Recipe</button> <span id="recipe-save-msg" style="font-size:12px;"></span></div>';
 
       function wireRemoveButtons() {
@@ -1225,9 +1270,65 @@ function loadRecipeEditor(productId, materials) {
       }
       wireRemoveButtons();
 
-      document.getElementById("recipe-add-row-btn").addEventListener("click", () => {
-        document.getElementById("recipe-rows").insertAdjacentHTML("beforeend", recipeRowHtml(materials, materials[0].id, ""));
-        wireRemoveButtons();
+      function refreshMaterialSelectOptions() {
+        editor.querySelectorAll(".recipe-material-select").forEach((select) => {
+          const current = select.value;
+          select.innerHTML = materials.map((m) => '<option value="' + esc(m.id) + '" ' + (m.id === current ? "selected" : "") + '>' + esc(m.name) + " (" + esc(m.unit) + ")</option>").join("");
+        });
+      }
+
+      const addRowBtn = document.getElementById("recipe-add-row-btn");
+      if (addRowBtn) {
+        addRowBtn.addEventListener("click", () => {
+          document.getElementById("recipe-rows").insertAdjacentHTML("beforeend", recipeRowHtml(materials, materials[0].id, ""));
+          wireRemoveButtons();
+        });
+      }
+
+      document.getElementById("recipe-quick-add-btn").addEventListener("click", () => {
+        const container = document.getElementById("quick-add-mat-container");
+        if (container.innerHTML) { container.innerHTML = ""; return; }
+        container.innerHTML = quickAddMaterialFormHtml(productName);
+
+        document.getElementById("qam-cancel-btn").addEventListener("click", () => { container.innerHTML = ""; });
+
+        document.getElementById("qam-submit-btn").addEventListener("click", () => {
+          const msg = document.getElementById("qam-msg");
+          const name = document.getElementById("qam-name").value.trim();
+          if (!name) { msg.textContent = "Name is required."; msg.style.color = "#c0392b"; return; }
+
+          const body = {
+            name,
+            category: document.getElementById("qam-category").value,
+            productId,
+            productName,
+            unit: document.getElementById("qam-unit").value.trim() || "piece",
+            stock: document.getElementById("qam-stock").value,
+            costPerUnit: document.getElementById("qam-cost").value,
+          };
+          msg.textContent = "Creating…";
+          msg.style.color = "var(--muted)";
+          fetch("/api/admin/production/raw-materials", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then((res) => res.json())
+            .then((result) => {
+              if (!result.success) { msg.textContent = result.error || "Failed."; msg.style.color = "#c0392b"; return; }
+              materials.push(result.material);
+              refreshMaterialSelectOptions();
+              const rowsContainer = document.getElementById("recipe-rows");
+              if (rowsContainer) {
+                rowsContainer.insertAdjacentHTML("beforeend", recipeRowHtml(materials, result.material.id, ""));
+              } else {
+                editor.querySelector("#recipe-quick-add-btn").insertAdjacentHTML("beforebegin", '<div id="recipe-rows">' + recipeRowHtml(materials, result.material.id, "") + "</div>");
+              }
+              wireRemoveButtons();
+              container.innerHTML = "";
+            })
+            .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+        });
       });
 
       document.getElementById("recipe-save-btn").addEventListener("click", () => {

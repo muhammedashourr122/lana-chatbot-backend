@@ -922,10 +922,10 @@ router.get("/production/raw-materials", requireOwner, async (req, res) => {
 
 router.post("/production/raw-materials", requireOwner, async (req, res) => {
   try {
-    const { name, unit, stock, costPerUnit, lowStockThreshold } = req.body || {};
+    const { name, unit, stock, costPerUnit, lowStockThreshold, category, productId, productName } = req.body || {};
     if (!name) return res.status(400).json({ success: false, error: "name is required" });
 
-    const material = await rawMaterialsStore.createRawMaterial({ name, unit, stock, costPerUnit, lowStockThreshold });
+    const material = await rawMaterialsStore.createRawMaterial({ name, unit, stock, costPerUnit, lowStockThreshold, category, productId, productName });
     logActivity(req.user.username, "raw_material_created", { name });
     res.json({ success: true, material });
   } catch (error) {
@@ -936,13 +936,16 @@ router.post("/production/raw-materials", requireOwner, async (req, res) => {
 
 router.patch("/production/raw-materials/:id", requireOwner, async (req, res) => {
   try {
-    const { name, unit, stock, costPerUnit, lowStockThreshold } = req.body || {};
+    const { name, unit, stock, costPerUnit, lowStockThreshold, category, productId, productName } = req.body || {};
     const fields = {};
     if (name !== undefined) fields.name = name;
     if (unit !== undefined) fields.unit = unit;
     if (stock !== undefined) fields.stock = Number(stock);
     if (costPerUnit !== undefined) fields.costPerUnit = Number(costPerUnit);
     if (lowStockThreshold !== undefined) fields.lowStockThreshold = Number(lowStockThreshold);
+    if (category !== undefined) fields.category = category;
+    if (productId !== undefined) fields.productId = productId || null;
+    if (productName !== undefined) fields.productName = productName || null;
 
     const material = await rawMaterialsStore.updateRawMaterial(req.params.id, fields);
     logActivity(req.user.username, "raw_material_updated", { name: material.name, fields: Object.keys(fields) });
