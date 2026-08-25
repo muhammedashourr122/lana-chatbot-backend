@@ -108,6 +108,15 @@ function render(order, events, bostaLive) {
         '</div></div>' : "") +
       (bostaLive.slaBreached ? '<div class="od-field"><span>SLA</span><div><span class="badge attn">Breached</span></div></div>' : "") +
       '</div></div>';
+
+    if (bostaLive.attempts && bostaLive.attempts.length > 0) {
+      html += '<div class="section-card"><h2>Delivery Attempts <span class="hint">— which courier had this, and when</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Type</th><th>Date</th><th>Courier</th><th>Phone</th></tr>' +
+        bostaLive.attempts.map((a) =>
+          "<tr><td>" + esc(a.type || "—") + "</td><td>" + (a.date ? new Date(a.date).toLocaleString() : "—") + "</td><td>" + esc(a.courierName || "—") + "</td><td>" + esc(a.courierPhone || "—") + "</td></tr>"
+        ).join("") +
+        "</table></div></div>";
+    }
   } else if (order.bosta && order.bosta.tracking_number) {
     html += '<div class="section-card"><p class="empty">Live Bosta details unavailable right now.</p></div>';
   }

@@ -67,13 +67,21 @@ function openCustomerPanel(phone) {
         panel.innerHTML = '<div class="section-card"><p class="empty">Could not load customer.</p></div>';
         return;
       }
+      const RISK_STATUSES = ["returning_from_delivery", "canceled", "refunded", "request_refund", "refund_in_progress"];
+      const riskCount = data.orders.filter((o) => RISK_STATUSES.includes(o.status)).length;
+      const riskRate = data.orders.length > 0 ? riskCount / data.orders.length : 0;
+      const riskBadge = riskCount > 0
+        ? '<span class="badge ' + (riskRate >= 0.5 ? "attn" : "warn") + '" style="margin-left:8px;">' + riskCount + " of " + data.orders.length + " returned/canceled</span>"
+        : "";
+
       let html = '<div class="section-card">' +
-        '<div class="section-head"><h2>' + esc(data.full_name || "Customer") + " — " + esc(phone) + "</h2>" +
+        '<div class="section-head"><h2>' + esc(data.full_name || "Customer") + " — " + esc(phone) + riskBadge + "</h2>" +
         '<a class="action-link" href="#" id="close-customer-panel">Close</a></div>' +
         "<p>" + data.order_count + " orders · Lifetime value: " + money(data.lifetime_value) + "</p>" +
         '<div class="table-scroll"><table><tr><th>Order #</th><th>Status</th><th>Total</th><th>Date</th></tr>';
       data.orders.forEach((o) => {
-        html += "<tr><td>" + esc(o.short_id) + "</td><td>" + esc(o.status) + "</td><td>" + money(o.total_cost) + "</td><td>" + new Date(o.created_at).toLocaleDateString() + "</td></tr>";
+        const rowCls = RISK_STATUSES.includes(o.status) ? ' class="attention"' : "";
+        html += "<tr" + rowCls + "><td>" + esc(o.short_id) + "</td><td>" + esc(o.status) + "</td><td>" + money(o.total_cost) + "</td><td>" + new Date(o.created_at).toLocaleDateString() + "</td></tr>";
       });
       html += "</table></div></div>";
       panel.innerHTML = html;
@@ -178,14 +186,33 @@ function renderOverview(data) {
     .map(([status, count]) => '<span class="status-pill">' + esc(status) + ": " + count + "</span>")
     .join("");
 
+  const returningCount = (data.status_counts || {}).returning_from_delivery || 0;
+  const returningHtml = returningCount > 0
+    ? '<div class="section-card" style="border:1px solid var(--danger-text);cursor:pointer;" id="returning-alert-card">' +
+      '<h2 style="color:var(--danger-text);margin:0;">⚠ ' + returningCount + ' order' + (returningCount === 1 ? "" : "s") + ' returning to you</h2>' +
+      '<p class="empty" style="text-align:left;padding:6px 0 0;">Bosta is sending these back — expect the stock again soon. Click to view them in Orders.</p>' +
+      "</div>"
+    : "";
+
   const chartHtml = data.revenue_trend
     ? '<div class="section-card"><h2>Revenue — Last 30 Days</h2>' +
       '<div class="chart-wrap">' + revenueChartSvg(data.revenue_trend) + "</div></div>"
     : "";
 
   root.innerHTML = statsHtml +
+    returningHtml +
     '<div class="section-card" style="padding:14px 20px;">' + statusPills + "</div>" +
     chartHtml;
+
+  const returningCard = document.getElementById("returning-alert-card");
+  if (returningCard) {
+    returningCard.addEventListener("click", () => {
+      document.querySelector('.tab-btn[data-tab="orders"]').click();
+      ordersState.status = "returning_from_delivery";
+      ordersState.page = 1;
+      loadOrders();
+    });
+  }
 }
 
 function renderNeedsAttention(items) {
@@ -482,10 +509,21 @@ function isUnexpectedPackageType(packageType) {
   return packageType && packageType.toLowerCase() !== "small";
 }
 
+// Flags orders where what the customer was charged for shipping on Easy
+// Orders falls meaningfully short of what Bosta actually billed for it
+// — i.e. shipping that's quietly eating into margin. A small gap is
+// normal (rounding, promo free-shipping codes); only flag a real gap.
+const SHIPPING_UNDERCHARGE_THRESHOLD_EGP = 10;
+
 function renderBostaSummaryResults(body, rows) {
   const ok = rows.filter((r) => r.result.success);
   const breached = ok.filter((r) => r.result.slaBreached);
   const wrongPackage = ok.filter((r) => isUnexpectedPackageType(r.result.packageType));
+  const underchargedShipping = ok.filter((r) =>
+    typeof r.result.shipmentFees === "number" &&
+    typeof r.order.shipping_cost === "number" &&
+    r.result.shipmentFees - r.order.shipping_cost >= SHIPPING_UNDERCHARGE_THRESHOLD_EGP
+  );
   const upcomingCashouts = ok
     .filter((r) => r.result.nextCashoutDate)
     .map((r) => ({ order: r.order, date: r.result.nextCashoutDate }))
@@ -495,8 +533,18 @@ function renderBostaSummaryResults(body, rows) {
     '<div class="stat-card"><div class="num">' + ok.length + '</div><div class="label">Orders Scanned</div></div>' +
     '<div class="stat-card"><div class="num">' + breached.length + '</div><div class="label">SLA Breached</div></div>' +
     '<div class="stat-card"><div class="num">' + wrongPackage.length + '</div><div class="label">Scanned as Non-Small</div></div>' +
+    '<div class="stat-card"><div class="num">' + underchargedShipping.length + '</div><div class="label">Shipping Undercharged</div></div>' +
     '<div class="stat-card"><div class="num">' + upcomingCashouts.length + '</div><div class="label">Upcoming Cashouts</div></div>' +
     "</div>";
+
+  if (underchargedShipping.length > 0) {
+    html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">Shipping Undercharged (Bosta billed more than the customer paid)</h3>' +
+      '<div class="table-scroll" style="margin-bottom:16px;"><table><tr><th>Order #</th><th>Customer</th><th>Customer Paid</th><th>Bosta Billed</th><th>Gap</th></tr>' +
+      underchargedShipping.map((r) =>
+        "<tr class=\"attention\"><td>" + esc(r.order.short_id) + "</td><td>" + esc(r.order.full_name) + "</td><td>" + money(r.order.shipping_cost) + "</td><td>" + money(r.result.shipmentFees) + "</td><td><span class=\"badge attn\">" + money(r.result.shipmentFees - r.order.shipping_cost) + "</span></td></tr>"
+      ).join("") +
+      "</table></div>";
+  }
 
   if (wrongPackage.length > 0) {
     html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">Scanned as Large/Bulky (you ship small flyers)</h3>' +
@@ -522,7 +570,7 @@ function renderBostaSummaryResults(body, rows) {
       "</table></div>";
   }
 
-  if (breached.length === 0 && upcomingCashouts.length === 0 && wrongPackage.length === 0) {
+  if (breached.length === 0 && upcomingCashouts.length === 0 && wrongPackage.length === 0 && underchargedShipping.length === 0) {
     html += '<p class="empty">Nothing to flag among the scanned orders.</p>';
   }
 

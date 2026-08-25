@@ -472,6 +472,12 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       nextCashoutDate: isModerator(req) ? undefined : delivery.wallet?.cashout?.next_cashout_date,
       packageType: delivery.specs?.packageType || null,
       packageWeight: delivery.specs?.weight || null,
+      attempts: (delivery.attempts || []).map((a) => ({
+        type: a.type,
+        date: a.attemptDate,
+        courierName: a.star?.name || null,
+        courierPhone: a.star?.phone || null,
+      })),
       stateLog,
     });
   } catch (error) {
