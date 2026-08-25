@@ -126,8 +126,10 @@ footer .max-w-7xl.mx-auto.px-4.pb-20 {
   padding: 0 !important;
 }
 
-/* Remove "Powered by Easyorders" wherever it appears */
-p:has(> a[href="https://www.easy-orders.net"]) {
+/* Remove "Powered by Easyorders" wherever it appears — target the
+   wrapping div, not just the <p> inside it, otherwise the div's own
+   padding (py-8) is left behind as an empty white gap. */
+div:has(> p > a[href="https://www.easy-orders.net"]) {
   display: none !important;
 }
 
