@@ -264,9 +264,13 @@ function renderTopProductsAndLowStock(topProducts, lowStock) {
 
   let lowStockHtml = "";
   if (lowStock && lowStock.length > 0) {
-    lowStockHtml = '<div class="section-card"><h2>Low Stock (' + lowStock.length + ")</h2>" +
-      '<div class="table-scroll"><table><tr><th>Product</th><th>Quantity Left</th></tr>';
-    lowStock.forEach((p) => { lowStockHtml += '<tr class="attention"><td>' + esc(p.name) + "</td><td>" + p.quantity + "</td></tr>"; });
+    lowStockHtml = '<div class="section-card"><h2>Low Stock (' + lowStock.length + ') <span class="hint">— sorted by unfulfilled order demand first</span></h2>' +
+      '<div class="table-scroll"><table><tr><th>Product</th><th>Quantity Left</th><th>Pending Order Demand</th></tr>';
+    lowStock.forEach((p) => {
+      lowStockHtml += '<tr class="attention"><td>' + esc(p.name) + "</td><td>" + p.quantity + "</td><td>" +
+        (p.pending_demand > 0 ? '<span class="badge attn">' + p.pending_demand + " needed</span>" : "—") +
+        "</td></tr>";
+    });
     lowStockHtml += "</table></div></div>";
   }
 

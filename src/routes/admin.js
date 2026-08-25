@@ -209,10 +209,24 @@ async function computeAdminData() {
   try {
     const productData = await getProducts({ limit: 200 });
     const products = productData.data || productData;
+
+    // Cross-reference against orders not yet fulfilled/terminal, so a
+    // low-stock item that already has unfulfilled demand queued up
+    // stands out as the one to restock first.
+    const pendingCountByName = {};
+    validRows.forEach((r) => {
+      if (TERMINAL_STATUSES.includes(r.status)) return;
+      (r.cart_items || []).forEach((item) => {
+        const name = item.product ? item.product.name : null;
+        if (!name) return;
+        pendingCountByName[name] = (pendingCountByName[name] || 0) + (item.quantity || 1);
+      });
+    });
+
     lowStock = products
       .filter((p) => p.track_stock && p.quantity <= LOW_STOCK_THRESHOLD)
-      .map((p) => ({ name: p.name, quantity: p.quantity }))
-      .sort((a, b) => a.quantity - b.quantity);
+      .map((p) => ({ name: p.name, quantity: p.quantity, pending_demand: pendingCountByName[p.name] || 0 }))
+      .sort((a, b) => (b.pending_demand - a.pending_demand) || (a.quantity - b.quantity));
   } catch (e) {
     console.error("Low stock check failed:", e.message);
   }
