@@ -85,6 +85,9 @@ app.get("/admin/dashboard", (req, res) => {
 app.get("/admin/homepage-builder", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/admin/homepage-builder.html"));
 });
+app.get("/admin/order/:orderId", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/admin/order-detail.html"));
+});
 app.use("/admin", express.static(path.join(__dirname, "../public/admin")));
 
 // Combined bundles — one <link>/<script> tag in the head-code box instead

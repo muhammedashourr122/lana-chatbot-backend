@@ -40,6 +40,9 @@ function callLink(phone) {
 function printLink(orderId) {
   return '<a class="action-link" href="/admin/packing-slip/' + orderId + '" target="_blank" rel="noreferrer">Print slip</a>';
 }
+function detailLink(orderId) {
+  return '<a class="action-link" href="/admin/order/' + orderId + '" target="_blank" rel="noreferrer">View Details</a>';
+}
 function awbLink(orderId, hasBosta) {
   if (!hasBosta) return "";
   return '<a class="action-link" href="/admin/awb/' + orderId + '" target="_blank" rel="noreferrer">Print AWB</a>';
@@ -206,7 +209,7 @@ function renderNeedsAttention(items) {
       "<td>" + esc(it.easyorders_status) + "</td>" +
       "<td>" + esc(it.bosta_state_name || "—") + "</td>" +
       (showMoney ? "<td>" + money(it.total_cost) + "</td>" : "") +
-      "<td>" + callLink(it.phone) + customerLink(it.phone) + printLink(it.order_id) + awbLink(it.order_id, it.bosta_tracking_number) + "</td>" +
+      "<td>" + callLink(it.phone) + customerLink(it.phone) + printLink(it.order_id) + awbLink(it.order_id, it.bosta_tracking_number) + detailLink(it.order_id) + "</td>" +
       "</tr>";
   });
   html += "</table></div></div>";
@@ -467,7 +470,7 @@ function renderOrders(data) {
       "<td>" + esc(o.full_name) + "<br>" + esc(o.phone) + "</td>" +
       "<td>" + esc(o.government) + "</td>" +
       (showMoney ? "<td>" + money(o.total_cost) + "</td>" : "") +
-      "<td>" + callLink(o.phone) + customerLink(o.phone) + printLink(o.order_id) + awbLink(o.order_id, o.bosta?.tracking_number) + "</td>" +
+      "<td>" + callLink(o.phone) + customerLink(o.phone) + printLink(o.order_id) + awbLink(o.order_id, o.bosta?.tracking_number) + detailLink(o.order_id) + "</td>" +
       "</tr>";
 
     if (isExpanded) {

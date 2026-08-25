@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lana Beauty — Order Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/dashboard.css">
+<link rel="stylesheet" href="/admin/order-detail.css">
+<script>
+  (function () {
+    var saved = localStorage.getItem("lana-admin-theme");
+    if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+  })();
+</script>
+</head>
+<body class="od-body">
+
+<div class="od-topbar">
+  <a href="/admin/dashboard" class="od-back">&larr; Dashboard</a>
+  <h1 id="od-title">Order Detail</h1>
+  <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+</div>
+
+<div class="od-page" id="od-page">
+  <div class="skeleton"></div>
+</div>
+
+<script type="module" src="/admin/order-detail.js"></script>
+</body>
+</html>

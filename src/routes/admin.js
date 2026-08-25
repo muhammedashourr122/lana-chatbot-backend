@@ -411,6 +411,25 @@ router.get("/orders", async (req, res) => {
   }
 });
 
+// Single order, full detail — backs the dedicated order detail page
+// (a cleaner alternative to the cramped expanded table row).
+router.get("/orders/:orderId", async (req, res) => {
+  try {
+    const data = await getAdminData();
+    let order = data.orders.find((o) => o.order_id === req.params.orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, error: "Order not found" });
+    }
+    if (isModerator(req)) order = stripOrderMoney(order);
+
+    const events = await getTrackingEvents(req.params.orderId);
+    res.json({ success: true, order, events });
+  } catch (error) {
+    console.error("Order detail error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load order" });
+  }
+});
+
 // Live pull straight from Bosta (not our webhook-derived history) — used
 // on demand from an order's expanded row, since polling this for every
 // order on every page load would be slow and needlessly hit Bosta's API.
