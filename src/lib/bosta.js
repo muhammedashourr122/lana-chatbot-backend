@@ -54,4 +54,60 @@ async function getAwbPdfByTrackingNumbers(trackingNumbers) {
   return Buffer.from(base64Pdf, "base64");
 }
 
-module.exports = { getDeliveryByTrackingNumber, getAwbPdfByTrackingNumber, getAwbPdfByTrackingNumbers };
+// Account-wide — this Bosta account has more than one brand under it
+// (see getPickupsForTrackingNumbers below for why callers must never
+// return this raw).
+async function getPickupsPage(page) {
+  const http = await client();
+  const res = await http.get("/pickups", { params: { page } });
+  return res.data?.data;
+}
+
+// Bosta's /pickups has no per-brand filter and mixes every brand under
+// this account into one list — including other brands' customer names
+// and phone numbers inside each pickup's deliveries array. This filters
+// every pickup's deliveries down to only the given (our own, already
+// known) tracking numbers, and drops any pickup left with zero matches,
+// so nothing belonging to another brand is ever returned by this
+// function. Scans up to maxPages of Bosta's list looking for matches.
+async function getPickupsForTrackingNumbers(trackingNumbers, maxPages = 3) {
+  const wanted = new Set(trackingNumbers);
+  const matchedPickups = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await getPickupsPage(page);
+    const list = data?.list || [];
+    if (list.length === 0) break;
+
+    list.forEach((pickup) => {
+      const ourDeliveries = (pickup.deliveries || []).filter((d) => wanted.has(d.trackingNumber));
+      if (ourDeliveries.length === 0) return;
+      matchedPickups.push({
+        id: pickup._id,
+        type: pickup.type,
+        state: pickup.state,
+        scheduledDate: pickup.scheduledDate,
+        scheduledTimeSlot: pickup.scheduledTimeSlot,
+        numberOfParcels: pickup.numberOfParcels,
+        deliveries: ourDeliveries.map((d) => ({
+          trackingNumber: d.trackingNumber,
+          businessReference: d.businessReference,
+          receiverName: d.receiver?.fullName || null,
+        })),
+      });
+    });
+
+    // Bosta's own "total" count tells us when we've walked past the
+    // last page — no point scanning further once we have.
+    if (data.total != null && page * list.length >= data.total) break;
+  }
+
+  return matchedPickups;
+}
+
+module.exports = {
+  getDeliveryByTrackingNumber,
+  getAwbPdfByTrackingNumber,
+  getAwbPdfByTrackingNumbers,
+  getPickupsForTrackingNumbers,
+};

@@ -338,12 +338,56 @@ function exportCsv(orders) {
 // rolls up SLA breaches + upcoming COD cashouts. Manual trigger only —
 // this is N Bosta API calls, not something to run on every page load.
 
+// ---------------- Pickups (Lana-only, filtered server-side) ----------------
+// Loaded lazily on first visit to the tab, not on every dashboard load —
+// this hits Bosta's API for up to a few pages of account-wide pickups.
+
+function wirePickupsTabLazyLoad() {
+  const btn = document.querySelector('.tab-btn[data-tab="pickups"]');
+  let loaded = false;
+  btn.addEventListener("click", () => {
+    if (loaded) return;
+    loaded = true;
+    renderPickups();
+  });
+}
+
+function renderPickups() {
+  const root = document.getElementById("pickups-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading pickups…</p></div>';
+
+  fetch("/api/admin/pickups")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load pickups.</p></div>'; return; }
+
+      if (data.pickups.length === 0) {
+        root.innerHTML = '<div class="section-card"><h2>Pickups</h2><p class="empty">No scheduled pickups found among your recent orders.</p></div>';
+        return;
+      }
+
+      let html = '<div class="section-card"><h2>Pickups <span class="hint">— only deliveries matching your own orders (other brands on the same Bosta account are filtered out)</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Date</th><th>Time Slot</th><th>State</th><th>Your Parcels</th></tr>';
+
+      data.pickups.forEach((p) => {
+        html += "<tr><td>" + esc(p.scheduledDate || "—") + "</td><td>" + esc(p.scheduledTimeSlot || "—") + "</td><td>" + esc(String(p.state ?? "—")) + "</td><td>" + p.deliveries.length + "</td></tr>";
+        html += '<tr class="detail-row"><td colspan="4"><div class="table-scroll"><table><tr><th>Tracking #</th><th>Order Ref</th><th>Customer</th></tr>' +
+          p.deliveries.map((d) => "<tr><td>" + esc(d.trackingNumber) + "</td><td>" + esc(d.businessReference || "—") + "</td><td>" + esc(d.receiverName || "—") + "</td></tr>").join("") +
+          "</table></div></td></tr>";
+      });
+
+      html += "</table></div></div>";
+      root.innerHTML = html;
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load pickups.</p></div>'; });
+}
+
 const BOSTA_SUMMARY_SCAN_LIMIT = 25;
 
 function renderBostaSummary() {
   const root = document.getElementById("bosta-summary-root");
   root.innerHTML = '<div class="section-card">' +
-    '<div class="section-head"><h2>Bosta Summary <span class="hint">— SLA compliance &amp; upcoming COD cashouts, scanned from your recent orders</span></h2>' +
+    '<div class="section-head"><h2>Bosta Summary <span class="hint">— SLA compliance, package-size mismatches &amp; upcoming COD cashouts, scanned from your recent orders</span></h2>' +
     '<button id="bosta-summary-refresh-btn" class="btn">Refresh Bosta Summary</button></div>' +
     '<div id="bosta-summary-body"><p class="empty">Click refresh to scan your last ' + BOSTA_SUMMARY_SCAN_LIMIT + ' orders with Bosta tracking.</p></div>' +
     "</div>";
@@ -389,9 +433,17 @@ function runBostaSummaryScan() {
     });
 }
 
+// You ship everything as a small flyer — if Bosta's own warehouse scan
+// classified it as anything else, that's worth catching (usually means
+// an extra fee was applied, or the parcel was mishandled/mis-scanned).
+function isUnexpectedPackageType(packageType) {
+  return packageType && packageType.toLowerCase() !== "small";
+}
+
 function renderBostaSummaryResults(body, rows) {
   const ok = rows.filter((r) => r.result.success);
   const breached = ok.filter((r) => r.result.slaBreached);
+  const wrongPackage = ok.filter((r) => isUnexpectedPackageType(r.result.packageType));
   const upcomingCashouts = ok
     .filter((r) => r.result.nextCashoutDate)
     .map((r) => ({ order: r.order, date: r.result.nextCashoutDate }))
@@ -400,8 +452,19 @@ function renderBostaSummaryResults(body, rows) {
   let html = '<div class="stats-row" style="margin-bottom:16px;">' +
     '<div class="stat-card"><div class="num">' + ok.length + '</div><div class="label">Orders Scanned</div></div>' +
     '<div class="stat-card"><div class="num">' + breached.length + '</div><div class="label">SLA Breached</div></div>' +
+    '<div class="stat-card"><div class="num">' + wrongPackage.length + '</div><div class="label">Scanned as Non-Small</div></div>' +
     '<div class="stat-card"><div class="num">' + upcomingCashouts.length + '</div><div class="label">Upcoming Cashouts</div></div>' +
     "</div>";
+
+  if (wrongPackage.length > 0) {
+    html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">Scanned as Large/Bulky (you ship small flyers)</h3>' +
+      '<div class="table-scroll" style="margin-bottom:16px;"><table><tr><th>Order #</th><th>Customer</th><th>Bosta Package Type</th><th>Weight</th></tr>' +
+      wrongPackage.map((r) =>
+        "<tr class=\"attention\"><td>" + esc(r.order.short_id) + "</td><td>" + esc(r.order.full_name) + "</td><td><span class=\"badge attn\">" + esc(r.result.packageType) + "</span></td><td>" +
+        (r.result.packageWeight != null ? r.result.packageWeight + "g" : "—") + "</td></tr>"
+      ).join("") +
+      "</table></div>";
+  }
 
   if (breached.length > 0) {
     html += '<h3 style="font-size:12px;color:var(--muted);margin:0 0 8px;">SLA Breached</h3>' +
@@ -417,8 +480,8 @@ function renderBostaSummaryResults(body, rows) {
       "</table></div>";
   }
 
-  if (breached.length === 0 && upcomingCashouts.length === 0) {
-    html += '<p class="empty">No SLA breaches and no upcoming cashouts among the scanned orders.</p>';
+  if (breached.length === 0 && upcomingCashouts.length === 0 && wrongPackage.length === 0) {
+    html += '<p class="empty">Nothing to flag among the scanned orders.</p>';
   }
 
   body.innerHTML = html;
@@ -1038,6 +1101,7 @@ function init() {
         renderCategories();
       }
       renderBostaSummary();
+      wirePickupsTabLazyLoad();
 
       return loadAll();
     })

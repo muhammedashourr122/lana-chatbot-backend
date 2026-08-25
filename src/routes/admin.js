@@ -18,7 +18,7 @@ const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
 const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
 const homepageContentStore = require("../lib/homepage-content-store");
-const { getDeliveryByTrackingNumber } = require("../lib/bosta");
+const { getDeliveryByTrackingNumber, getPickupsForTrackingNumbers } = require("../lib/bosta");
 
 const router = express.Router();
 
@@ -468,11 +468,34 @@ router.get("/orders/:orderId/bosta-live", async (req, res) => {
       isDelayed: delivery.isDelayed,
       slaBreached: Boolean(delivery.sla?.e2eSla?.isExceededE2ESla || delivery.sla?.orderSla?.isExceededOrderSla),
       nextCashoutDate: isModerator(req) ? undefined : delivery.wallet?.cashout?.next_cashout_date,
+      packageType: delivery.specs?.packageType || null,
+      packageWeight: delivery.specs?.weight || null,
       stateLog,
     });
   } catch (error) {
     console.error("Bosta live fetch error:", error.response?.data || error.message);
     res.status(502).json({ success: false, error: "Unable to fetch live Bosta data" });
+  }
+});
+
+// Bosta's own /pickups is account-wide (mixes in other brands under the
+// same Bosta account) — this only ever returns pickups that contain at
+// least one delivery matching one of our own known tracking numbers,
+// and only those specific deliveries, never another brand's.
+router.get("/pickups", async (req, res) => {
+  try {
+    const data = await getAdminData();
+    const trackingNumbers = data.orders.map((o) => o.bosta?.tracking_number).filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      return res.json({ success: true, pickups: [] });
+    }
+
+    const pickups = await getPickupsForTrackingNumbers(trackingNumbers);
+    res.json({ success: true, pickups });
+  } catch (error) {
+    console.error("Pickups fetch error:", error.response?.data || error.message);
+    res.status(502).json({ success: false, error: "Unable to fetch pickups from Bosta" });
   }
 });
 

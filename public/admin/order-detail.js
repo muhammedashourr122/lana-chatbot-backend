@@ -103,6 +103,9 @@ function render(order, events, bostaLive) {
       (bostaLive.shipmentFees != null ? '<div class="od-field"><span>Bosta Shipping Fee</span><div>' + money(bostaLive.shipmentFees) + '</div></div>' : "") +
       (bostaLive.numberOfAttempts != null ? '<div class="od-field"><span>Delivery Attempts</span><div>' + bostaLive.numberOfAttempts + '</div></div>' : "") +
       (bostaLive.nextCashoutDate ? '<div class="od-field"><span>Next COD Cashout</span><div>' + new Date(bostaLive.nextCashoutDate).toLocaleDateString() + '</div></div>' : "") +
+      (bostaLive.packageType ? '<div class="od-field"><span>Bosta Package Type</span><div>' +
+        (bostaLive.packageType.toLowerCase() !== "small" ? '<span class="badge attn">' + esc(bostaLive.packageType) + ' (expected Small)</span>' : esc(bostaLive.packageType)) +
+        '</div></div>' : "") +
       (bostaLive.slaBreached ? '<div class="od-field"><span>SLA</span><div><span class="badge attn">Breached</span></div></div>' : "") +
       '</div></div>';
   } else if (order.bosta && order.bosta.tracking_number) {
