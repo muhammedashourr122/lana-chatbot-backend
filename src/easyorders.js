@@ -52,8 +52,28 @@ async function easyOrdersPost(path, body = {}) {
   return response.data;
 }
 
+// The dashboard fires several admin API calls in parallel on load (Products
+// tab, Production Runs, Recipes, Capacity), each of which needs the product
+// list. Without coalescing, that's multiple concurrent hits to the same
+// Easy Orders endpoint, which risked tripping their rate limit and made
+// some of those cards fail with no useful error. Cache by params for a few
+// seconds and share in-flight requests so they collapse into one call.
+const productsCache = new Map();
+const PRODUCTS_CACHE_TTL_MS = 5000;
+
 async function getProducts(params = {}) {
-  return easyOrdersGet("/products/", params);
+  const cacheKey = JSON.stringify(params);
+  const cached = productsCache.get(cacheKey);
+  if (cached && Date.now() - cached.time < PRODUCTS_CACHE_TTL_MS) {
+    return cached.promise;
+  }
+
+  const promise = easyOrdersGet("/products/", params).catch((error) => {
+    productsCache.delete(cacheKey);
+    throw error;
+  });
+  productsCache.set(cacheKey, { promise, time: Date.now() });
+  return promise;
 }
 
 // The list endpoint above returns a stripped-down shape — no sale_price,

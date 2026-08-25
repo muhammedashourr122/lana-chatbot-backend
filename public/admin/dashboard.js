@@ -1023,7 +1023,7 @@ function renderProductionCapacity() {
   fetch("/api/admin/production/capacity")
     .then((res) => res.json())
     .then((data) => {
-      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load' + (data.error ? ": " + esc(data.error) : ".") + '</p></div>'; return; }
 
       if (data.capacity.length === 0) {
         root.innerHTML = '<div class="section-card"><h2>What Can We Produce Right Now?</h2><p class="empty">No products have a recipe yet — set one up below.</p></div>';
@@ -1039,7 +1039,7 @@ function renderProductionCapacity() {
         }).join("") +
         "</table></div></div>";
     })
-    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+    .catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load — network or server error.</p></div>'; });
 }
 
 function renderRawMaterials() {
@@ -1165,7 +1165,11 @@ function renderRecipes() {
     fetch("/api/admin/products").then((res) => res.json()),
     fetch("/api/admin/production/raw-materials").then((res) => res.json()),
   ]).then(([productsData, materialsData]) => {
-    if (!productsData.success || !materialsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+    if (!productsData.success || !materialsData.success) {
+      const err = productsData.error || materialsData.error;
+      root.innerHTML = '<div class="section-card"><p class="empty">Failed to load' + (err ? ": " + esc(err) : ".") + '</p></div>';
+      return;
+    }
     const products = productsData.products;
     const materials = materialsData.materials;
 
@@ -1180,7 +1184,7 @@ function renderRecipes() {
       if (!productId) { document.getElementById("recipe-editor").innerHTML = ""; return; }
       loadRecipeEditor(productId, materials);
     });
-  }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+  }).catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load — network or server error.</p></div>'; });
 }
 
 function recipeRowHtml(materials, selectedMaterialId, quantityPerUnit) {
