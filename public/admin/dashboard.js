@@ -2397,6 +2397,7 @@ function init() {
         document.getElementById("tab-btn-products").style.display = "";
         document.getElementById("tab-btn-categories").style.display = "";
         document.getElementById("tab-btn-production").style.display = "";
+        document.getElementById("tab-btn-finance").style.display = "";
         document.getElementById("tab-btn-activity").style.display = "";
         renderProducts();
         renderCategories();
