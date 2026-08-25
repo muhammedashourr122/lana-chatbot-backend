@@ -23,6 +23,9 @@ const usersStore = require("../lib/users-store");
 const homepageContentStore = require("../lib/homepage-content-store");
 const { getDeliveryByTrackingNumber, getPickupsForTrackingNumbers, checkOtherBrandPackageSizes } = require("../lib/bosta");
 const { logActivity, getRecentActivity } = require("../lib/activity-log-store");
+const rawMaterialsStore = require("../lib/raw-materials-store");
+const recipesStore = require("../lib/product-recipes-store");
+const productionRunsStore = require("../lib/production-runs-store");
 
 const router = express.Router();
 
@@ -899,6 +902,227 @@ router.get("/activity", requireOwner, async (req, res) => {
   } catch (error) {
     console.error("Activity log fetch error:", error.message);
     res.status(500).json({ success: false, error: "Unable to load activity log" });
+  }
+});
+
+// ---- Owner-only: production (raw materials -> finished products) ----
+
+router.get("/production/raw-materials", requireOwner, async (req, res) => {
+  try {
+    const materials = await rawMaterialsStore.getRawMaterials();
+    res.json({ success: true, materials });
+  } catch (error) {
+    console.error("Get raw materials error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load raw materials" });
+  }
+});
+
+router.post("/production/raw-materials", requireOwner, async (req, res) => {
+  try {
+    const { name, unit, stock, costPerUnit, lowStockThreshold } = req.body || {};
+    if (!name) return res.status(400).json({ success: false, error: "name is required" });
+
+    const material = await rawMaterialsStore.createRawMaterial({ name, unit, stock, costPerUnit, lowStockThreshold });
+    logActivity(req.user.username, "raw_material_created", { name });
+    res.json({ success: true, material });
+  } catch (error) {
+    console.error("Create raw material error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to create raw material" });
+  }
+});
+
+router.patch("/production/raw-materials/:id", requireOwner, async (req, res) => {
+  try {
+    const { name, unit, stock, costPerUnit, lowStockThreshold } = req.body || {};
+    const fields = {};
+    if (name !== undefined) fields.name = name;
+    if (unit !== undefined) fields.unit = unit;
+    if (stock !== undefined) fields.stock = Number(stock);
+    if (costPerUnit !== undefined) fields.costPerUnit = Number(costPerUnit);
+    if (lowStockThreshold !== undefined) fields.lowStockThreshold = Number(lowStockThreshold);
+
+    const material = await rawMaterialsStore.updateRawMaterial(req.params.id, fields);
+    logActivity(req.user.username, "raw_material_updated", { name: material.name, fields: Object.keys(fields) });
+    res.json({ success: true, material });
+  } catch (error) {
+    console.error("Update raw material error:", error.message);
+    res.status(400).json({ success: false, error: error.message || "Unable to update raw material" });
+  }
+});
+
+router.delete("/production/raw-materials/:id", requireOwner, async (req, res) => {
+  try {
+    await rawMaterialsStore.deleteRawMaterial(req.params.id);
+    logActivity(req.user.username, "raw_material_deleted", { id: req.params.id });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete raw material error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to delete raw material" });
+  }
+});
+
+router.get("/production/recipes/:productId", requireOwner, async (req, res) => {
+  try {
+    const ingredients = await recipesStore.getRecipe(req.params.productId);
+    res.json({ success: true, ingredients });
+  } catch (error) {
+    console.error("Get recipe error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load recipe" });
+  }
+});
+
+router.put("/production/recipes/:productId", requireOwner, async (req, res) => {
+  try {
+    const { ingredients } = req.body || {};
+    if (!Array.isArray(ingredients)) {
+      return res.status(400).json({ success: false, error: "ingredients must be an array" });
+    }
+    const materials = await rawMaterialsStore.getRawMaterials();
+    const materialIds = new Set(materials.map((m) => m.id));
+    for (const ing of ingredients) {
+      if (!materialIds.has(ing.materialId)) {
+        return res.status(400).json({ success: false, error: `Unknown material id: ${ing.materialId}` });
+      }
+      if (!(Number(ing.quantityPerUnit) > 0)) {
+        return res.status(400).json({ success: false, error: "quantityPerUnit must be greater than 0 for every ingredient" });
+      }
+    }
+
+    const saved = await recipesStore.setRecipe(
+      req.params.productId,
+      ingredients.map((ing) => ({ materialId: ing.materialId, quantityPerUnit: Number(ing.quantityPerUnit) }))
+    );
+    logActivity(req.user.username, "recipe_updated", { product_id: req.params.productId, ingredient_count: saved.length });
+    res.json({ success: true, ingredients: saved });
+  } catch (error) {
+    console.error("Set recipe error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to save recipe" });
+  }
+});
+
+// "What's remaining" — for every product with a recipe, how many more
+// units can be produced right now given current raw material stock, and
+// which material is the bottleneck.
+router.get("/production/capacity", requireOwner, async (req, res) => {
+  try {
+    const [allRecipes, materials, productData] = await Promise.all([
+      recipesStore.getAllRecipes(),
+      rawMaterialsStore.getRawMaterials(),
+      getProducts({ limit: 200 }),
+    ]);
+    const products = productData.data || productData;
+    const materialsById = Object.fromEntries(materials.map((m) => [m.id, m]));
+
+    const capacity = Object.entries(allRecipes)
+      .filter(([, ingredients]) => ingredients.length > 0)
+      .map(([productId, ingredients]) => {
+        const product = products.find((p) => p.id === productId);
+        const breakdown = ingredients.map((ing) => {
+          const material = materialsById[ing.materialId];
+          const unitsSupportable = material ? Math.floor(material.stock / ing.quantityPerUnit) : 0;
+          return {
+            materialId: ing.materialId,
+            materialName: material ? material.name : "(deleted material)",
+            stock: material ? material.stock : 0,
+            quantityPerUnit: ing.quantityPerUnit,
+            unitsSupportable,
+          };
+        });
+        const limiting = breakdown.reduce((min, b) => (b.unitsSupportable < min.unitsSupportable ? b : min), breakdown[0]);
+
+        return {
+          productId,
+          productName: product ? product.name : "(unknown product)",
+          maxProducible: limiting ? limiting.unitsSupportable : 0,
+          limitingMaterial: limiting ? { id: limiting.materialId, name: limiting.materialName } : null,
+          breakdown,
+        };
+      })
+      .sort((a, b) => a.maxProducible - b.maxProducible);
+
+    res.json({ success: true, capacity });
+  } catch (error) {
+    console.error("Production capacity error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to compute production capacity" });
+  }
+});
+
+router.get("/production/runs", requireOwner, async (req, res) => {
+  try {
+    const runs = await productionRunsStore.getProductionRuns(50);
+    res.json({ success: true, runs });
+  } catch (error) {
+    console.error("Get production runs error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load production runs" });
+  }
+});
+
+router.post("/production/runs", requireOwner, async (req, res) => {
+  try {
+    const { productId, quantityProduced, notes } = req.body || {};
+    const qty = Number(quantityProduced);
+    if (!productId || !Number.isFinite(qty) || qty <= 0) {
+      return res.status(400).json({ success: false, error: "productId and a positive quantityProduced are required" });
+    }
+
+    const ingredients = await recipesStore.getRecipe(productId);
+    if (ingredients.length === 0) {
+      return res.status(400).json({ success: false, error: "This product has no recipe defined yet" });
+    }
+
+    const materials = await rawMaterialsStore.getRawMaterials();
+    const materialsById = Object.fromEntries(materials.map((m) => [m.id, m]));
+
+    const shortages = [];
+    const deltas = {};
+    let totalCost = 0;
+    const materialsConsumed = [];
+
+    for (const ing of ingredients) {
+      const material = materialsById[ing.materialId];
+      const required = ing.quantityPerUnit * qty;
+      if (!material) {
+        shortages.push({ materialName: "(deleted material)", required, available: 0 });
+        continue;
+      }
+      if (material.stock < required) {
+        shortages.push({ materialName: material.name, required, available: material.stock });
+        continue;
+      }
+      deltas[material.id] = (deltas[material.id] || 0) - required;
+      totalCost += required * material.costPerUnit;
+      materialsConsumed.push({ materialId: material.id, materialName: material.name, quantityUsed: required, unitCost: material.costPerUnit });
+    }
+
+    if (shortages.length > 0) {
+      return res.status(400).json({ success: false, error: "Not enough raw material stock", shortages });
+    }
+
+    await rawMaterialsStore.adjustRawMaterialStocks(deltas);
+
+    // Add the produced quantity to the finished product's stock on Easy
+    // Orders — read current quantity first since PATCH here replaces the
+    // field, it doesn't increment it.
+    const product = await getProduct(productId);
+    await updateProduct(productId, { quantity: (product.quantity || 0) + qty });
+
+    const unitCost = totalCost / qty;
+    const run = await productionRunsStore.logProductionRun({
+      productId,
+      productName: product.name,
+      quantityProduced: qty,
+      materialsConsumed,
+      totalCost,
+      unitCost,
+      producedBy: req.user.username,
+      notes: notes || null,
+    });
+
+    logActivity(req.user.username, "production_run", { product_name: product.name, quantity: qty, unit_cost: Math.round(unitCost * 100) / 100 });
+    res.json({ success: true, run });
+  } catch (error) {
+    console.error("Production run error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to log production run" });
   }
 });
 

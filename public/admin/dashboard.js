@@ -1014,6 +1014,324 @@ function wireOrdersControls(data) {
 
 // ---------------- Products (owner-only): price, sale price, stock ----------------
 
+// ---------------- Production: capacity, raw materials, recipes, runs (owner-only) ----------------
+
+function renderProductionCapacity() {
+  const root = document.getElementById("production-capacity-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  fetch("/api/admin/production/capacity")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+
+      if (data.capacity.length === 0) {
+        root.innerHTML = '<div class="section-card"><h2>What Can We Produce Right Now?</h2><p class="empty">No products have a recipe yet — set one up below.</p></div>';
+        return;
+      }
+
+      root.innerHTML = '<div class="section-card"><h2>What Can We Produce Right Now? <span class="hint">— based on current raw material stock</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Product</th><th>Can Produce Now</th><th>Limiting Material</th></tr>' +
+        data.capacity.map((c) => {
+          const cls = c.maxProducible <= 0 ? ' class="attention"' : "";
+          return "<tr" + cls + "><td>" + esc(c.productName) + "</td><td><strong>" + c.maxProducible + " units</strong></td><td>" +
+            (c.limitingMaterial ? esc(c.limitingMaterial.name) : "—") + "</td></tr>";
+        }).join("") +
+        "</table></div></div>";
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
+function renderRawMaterials() {
+  const root = document.getElementById("raw-materials-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading materials…</p></div>';
+
+  fetch("/api/admin/production/raw-materials")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load materials.</p></div>'; return; }
+
+      let html = '<div class="section-card"><h2>Raw Materials</h2>' +
+        '<div class="table-scroll"><table><tr><th>Material</th><th>Unit</th><th>Stock</th><th>Cost / Unit</th><th>Low Stock At</th><th></th></tr>';
+
+      data.materials.forEach((m) => {
+        const low = m.stock <= m.lowStockThreshold;
+        html += '<tr data-material-id="' + m.id + '"' + (low ? ' class="attention"' : "") + '>' +
+          '<td>' + esc(m.name) + '</td>' +
+          '<td><input type="text" class="mat-unit" value="' + esc(m.unit) + '" style="width:70px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><input type="number" step="0.01" class="mat-stock" value="' + m.stock + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><input type="number" step="0.01" class="mat-cost" value="' + m.costPerUnit + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><input type="number" step="0.01" class="mat-threshold" value="' + m.lowStockThreshold + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><button class="mat-save-btn btn" style="padding:6px 12px;">Save</button> <button class="mat-delete-btn" style="padding:6px 10px;color:var(--danger-text);">Delete</button> <span class="mat-msg" style="font-size:12px;"></span></td>' +
+          "</tr>";
+      });
+
+      html += "</table></div>" +
+        '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Add Raw Material</h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Name</span><input type="text" id="new-mat-name" placeholder="e.g. Glass Bottle 236ml" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Unit</span><input type="text" id="new-mat-unit" placeholder="piece / ml / gram" value="piece" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Starting Stock</span><input type="number" step="0.01" id="new-mat-stock" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Cost per Unit</span><input type="number" step="0.01" id="new-mat-cost" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Low Stock Threshold</span><input type="number" step="0.01" id="new-mat-threshold" value="0" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        "</div>" +
+        '<button id="add-mat-btn" class="btn">Add Material</button> <span id="add-mat-msg" style="font-size:12px;"></span></div>';
+
+      root.innerHTML = html;
+
+      root.querySelectorAll(".mat-save-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const id = row.getAttribute("data-material-id");
+          const msg = row.querySelector(".mat-msg");
+          const body = {
+            unit: row.querySelector(".mat-unit").value,
+            stock: row.querySelector(".mat-stock").value,
+            costPerUnit: row.querySelector(".mat-cost").value,
+            lowStockThreshold: row.querySelector(".mat-threshold").value,
+          };
+          btn.disabled = true;
+          msg.textContent = "Saving…";
+          msg.style.color = "var(--muted)";
+          fetch("/api/admin/production/raw-materials/" + id, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then((res) => res.json())
+            .then((result) => {
+              btn.disabled = false;
+              if (result.success) {
+                msg.textContent = "Saved.";
+                msg.style.color = "#2e7d32";
+              } else {
+                msg.textContent = result.error || "Failed.";
+                msg.style.color = "#c0392b";
+              }
+            })
+            .catch(() => { btn.disabled = false; msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+        });
+      });
+
+      root.querySelectorAll(".mat-delete-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const row = btn.closest("tr");
+          const id = row.getAttribute("data-material-id");
+          if (!confirm("Delete this material? Any recipe using it will break.")) return;
+          fetch("/api/admin/production/raw-materials/" + id, { method: "DELETE" })
+            .then((res) => res.json())
+            .then((result) => {
+              if (result.success) { renderRawMaterials(); renderRecipes(); }
+              else alert(result.error || "Failed to delete");
+            });
+        });
+      });
+
+      document.getElementById("add-mat-btn").addEventListener("click", () => {
+        const msg = document.getElementById("add-mat-msg");
+        const name = document.getElementById("new-mat-name").value.trim();
+        if (!name) { msg.textContent = "Name is required."; msg.style.color = "#c0392b"; return; }
+
+        const body = {
+          name,
+          unit: document.getElementById("new-mat-unit").value.trim() || "piece",
+          stock: document.getElementById("new-mat-stock").value,
+          costPerUnit: document.getElementById("new-mat-cost").value,
+          lowStockThreshold: document.getElementById("new-mat-threshold").value,
+        };
+        msg.textContent = "Adding…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/production/raw-materials", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) { renderRawMaterials(); }
+            else { msg.textContent = result.error || "Failed."; msg.style.color = "#c0392b"; }
+          })
+          .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+      });
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load materials.</p></div>'; });
+}
+
+function renderRecipes() {
+  const root = document.getElementById("recipes-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  Promise.all([
+    fetch("/api/admin/products").then((res) => res.json()),
+    fetch("/api/admin/production/raw-materials").then((res) => res.json()),
+  ]).then(([productsData, materialsData]) => {
+    if (!productsData.success || !materialsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+    const products = productsData.products;
+    const materials = materialsData.materials;
+
+    root.innerHTML = '<div class="section-card"><h2>Recipes <span class="hint">— what each product is made from</span></h2>' +
+      '<div style="margin-bottom:14px;"><select id="recipe-product-select" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);"><option value="">— choose a product —</option>' +
+      products.map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>").join("") +
+      "</select></div>" +
+      '<div id="recipe-editor"></div></div>';
+
+    document.getElementById("recipe-product-select").addEventListener("change", (e) => {
+      const productId = e.target.value;
+      if (!productId) { document.getElementById("recipe-editor").innerHTML = ""; return; }
+      loadRecipeEditor(productId, materials);
+    });
+  }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
+function recipeRowHtml(materials, selectedMaterialId, quantityPerUnit) {
+  return '<div class="recipe-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
+    '<select class="recipe-material-select" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    materials.map((m) => '<option value="' + esc(m.id) + '" ' + (m.id === selectedMaterialId ? "selected" : "") + '>' + esc(m.name) + " (" + esc(m.unit) + ")</option>").join("") +
+    '</select>' +
+    '<input type="number" step="0.001" class="recipe-qty-input" value="' + (quantityPerUnit ?? "") + '" placeholder="qty per unit" style="width:120px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);">' +
+    '<button type="button" class="recipe-remove-btn" style="padding:6px 10px;color:var(--danger-text);">×</button>' +
+    "</div>";
+}
+
+function loadRecipeEditor(productId, materials) {
+  const editor = document.getElementById("recipe-editor");
+  editor.innerHTML = '<p class="empty">Loading recipe…</p>';
+
+  if (materials.length === 0) {
+    editor.innerHTML = '<p class="empty">Add at least one raw material first.</p>';
+    return;
+  }
+
+  fetch("/api/admin/production/recipes/" + productId)
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { editor.innerHTML = '<p class="empty">Failed to load recipe.</p>'; return; }
+
+      const rows = data.ingredients.length > 0 ? data.ingredients : [{ materialId: materials[0].id, quantityPerUnit: "" }];
+      editor.innerHTML = '<div id="recipe-rows">' +
+        rows.map((r) => recipeRowHtml(materials, r.materialId, r.quantityPerUnit)).join("") +
+        "</div>" +
+        '<button type="button" id="recipe-add-row-btn" style="padding:6px 12px;margin-top:4px;">+ Add Ingredient</button>' +
+        '<div style="margin-top:14px;"><button id="recipe-save-btn" class="btn">Save Recipe</button> <span id="recipe-save-msg" style="font-size:12px;"></span></div>';
+
+      function wireRemoveButtons() {
+        editor.querySelectorAll(".recipe-remove-btn").forEach((btn) => {
+          btn.onclick = () => btn.closest(".recipe-row").remove();
+        });
+      }
+      wireRemoveButtons();
+
+      document.getElementById("recipe-add-row-btn").addEventListener("click", () => {
+        document.getElementById("recipe-rows").insertAdjacentHTML("beforeend", recipeRowHtml(materials, materials[0].id, ""));
+        wireRemoveButtons();
+      });
+
+      document.getElementById("recipe-save-btn").addEventListener("click", () => {
+        const msg = document.getElementById("recipe-save-msg");
+        const ingredients = Array.from(editor.querySelectorAll(".recipe-row")).map((row) => ({
+          materialId: row.querySelector(".recipe-material-select").value,
+          quantityPerUnit: row.querySelector(".recipe-qty-input").value,
+        }));
+
+        msg.textContent = "Saving…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/production/recipes/" + productId, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredients }),
+        })
+          .then((res) => res.json())
+          .then((result) => {
+            if (result.success) {
+              msg.textContent = "Saved.";
+              msg.style.color = "#2e7d32";
+              renderProductionCapacity();
+            } else {
+              msg.textContent = result.error || "Failed.";
+              msg.style.color = "#c0392b";
+            }
+          })
+          .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+      });
+    })
+    .catch(() => { editor.innerHTML = '<p class="empty">Failed to load recipe.</p>'; });
+}
+
+function renderProductionRuns() {
+  const root = document.getElementById("production-runs-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  Promise.all([
+    fetch("/api/admin/products").then((res) => res.json()),
+    fetch("/api/admin/production/runs").then((res) => res.json()),
+  ]).then(([productsData, runsData]) => {
+    if (!productsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+    const products = productsData.products;
+    const runs = runsData.success ? runsData.runs : [];
+
+    let html = '<div class="section-card"><h2>Log a Production Run</h2>' +
+      '<div class="detail-grid" style="margin-bottom:14px;">' +
+      '<div><span>Product</span><select id="run-product-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— choose —</option>' +
+      products.map((p) => '<option value="' + esc(p.id) + '">' + esc(p.name) + "</option>").join("") +
+      "</select></div>" +
+      '<div><span>Quantity Produced</span><input type="number" step="1" id="run-quantity-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      '<div><span>Notes (optional)</span><input type="text" id="run-notes-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+      "</div>" +
+      '<button id="run-submit-btn" class="btn">Log Production Run</button> <span id="run-msg" style="font-size:12px;"></span></div>';
+
+    html += '<div class="section-card"><h2>Recent Production Runs</h2>';
+    if (runs.length === 0) {
+      html += '<p class="empty">No production runs logged yet.</p>';
+    } else {
+      html += '<div class="table-scroll"><table><tr><th>Date</th><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Cost</th><th>By</th></tr>' +
+        runs.map((r) =>
+          "<tr><td>" + new Date(r.createdAt).toLocaleString() + "</td><td>" + esc(r.productName) + "</td><td>" + r.quantityProduced + "</td><td>" +
+          money(Math.round(r.unitCost * 100) / 100) + "</td><td>" + money(Math.round(r.totalCost * 100) / 100) + "</td><td>" + esc(r.producedBy) + "</td></tr>"
+        ).join("") +
+        "</table></div>";
+    }
+    html += "</div>";
+
+    root.innerHTML = html;
+
+    document.getElementById("run-submit-btn").addEventListener("click", () => {
+      const msg = document.getElementById("run-msg");
+      const productId = document.getElementById("run-product-select").value;
+      const quantityProduced = document.getElementById("run-quantity-input").value;
+      const notes = document.getElementById("run-notes-input").value.trim();
+
+      if (!productId || !quantityProduced) {
+        msg.textContent = "Product and quantity are required.";
+        msg.style.color = "#c0392b";
+        return;
+      }
+
+      msg.textContent = "Logging…";
+      msg.style.color = "var(--muted)";
+      fetch("/api/admin/production/runs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, quantityProduced, notes }),
+      })
+        .then((res) => res.json())
+        .then((result) => {
+          if (result.success) {
+            renderProductionRuns();
+            renderProductionCapacity();
+            renderRawMaterials();
+          } else if (result.shortages) {
+            msg.innerHTML = "Not enough stock: " + result.shortages.map((s) => esc(s.materialName) + " (need " + s.required + ", have " + s.available + ")").join("; ");
+            msg.style.color = "#c0392b";
+          } else {
+            msg.textContent = result.error || "Failed.";
+            msg.style.color = "#c0392b";
+          }
+        })
+        .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+    });
+  }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
 function renderProducts() {
   const root = document.getElementById("products-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -1492,9 +1810,14 @@ function init() {
         document.getElementById("tab-btn-users").style.display = "";
         document.getElementById("tab-btn-products").style.display = "";
         document.getElementById("tab-btn-categories").style.display = "";
+        document.getElementById("tab-btn-production").style.display = "";
         document.getElementById("tab-btn-activity").style.display = "";
         renderProducts();
         renderCategories();
+        renderProductionCapacity();
+        renderRawMaterials();
+        renderRecipes();
+        renderProductionRuns();
         renderActivity();
       }
       renderBostaSummary();
