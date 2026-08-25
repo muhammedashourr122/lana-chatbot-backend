@@ -28,6 +28,7 @@ const recipesStore = require("../lib/product-recipes-store");
 const productionRunsStore = require("../lib/production-runs-store");
 const suppliersStore = require("../lib/suppliers-store");
 const purchasesStore = require("../lib/purchases-store");
+const cashLedgerStore = require("../lib/cash-ledger-store");
 
 const router = express.Router();
 
@@ -1201,6 +1202,13 @@ router.post("/production/suppliers/:id/payments", requireOwner, async (req, res)
       paidBy: req.user.username,
       notes: notes || null,
     });
+    await cashLedgerStore.logCashEntry({
+      type: "disbursement",
+      category: "supplier_payment",
+      amount: amt,
+      description: "Payment to " + supplier.name,
+      recordedBy: req.user.username,
+    });
     logActivity(req.user.username, "supplier_payment", { supplier_name: supplier.name, amount: amt });
     res.json({ success: true, payment });
   } catch (error) {
@@ -1291,11 +1299,59 @@ router.post("/production/purchases", requireOwner, async (req, res) => {
       notes: notes || null,
     });
 
+    if (paid > 0) {
+      await cashLedgerStore.logCashEntry({
+        type: "disbursement",
+        category: "purchase",
+        amount: paid,
+        description: "Purchase from " + supplier.name,
+        recordedBy: req.user.username,
+      });
+    }
+
     logActivity(req.user.username, "purchase_logged", { supplier_name: supplier.name, total_amount: Math.round(totalAmount * 100) / 100 });
     res.json({ success: true, purchase });
   } catch (error) {
     console.error("Log purchase error:", error.response?.data || error.message);
     res.status(500).json({ success: false, error: "Unable to log purchase" });
+  }
+});
+
+// ---------------- Cash Ledger ----------------
+
+router.get("/production/cash-ledger", requireOwner, async (req, res) => {
+  try {
+    const entries = await cashLedgerStore.getCashEntries(100);
+    const balance = entries.reduce((sum, e) => sum + (e.type === "receipt" ? e.amount : -e.amount), 0);
+    res.json({ success: true, entries, balance: Math.round(balance * 100) / 100 });
+  } catch (error) {
+    console.error("Get cash ledger error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load cash ledger" });
+  }
+});
+
+router.post("/production/cash-ledger", requireOwner, async (req, res) => {
+  try {
+    const { type, amount, category, description } = req.body || {};
+    const amt = Number(amount);
+    if (type !== "receipt" && type !== "disbursement") {
+      return res.status(400).json({ success: false, error: "type must be 'receipt' or 'disbursement'" });
+    }
+    if (!Number.isFinite(amt) || amt <= 0) {
+      return res.status(400).json({ success: false, error: "A positive amount is required" });
+    }
+    const entry = await cashLedgerStore.logCashEntry({
+      type,
+      category: category || "manual",
+      amount: amt,
+      description: description || "",
+      recordedBy: req.user.username,
+    });
+    logActivity(req.user.username, "cash_ledger_entry", { type, amount: amt, category: category || "manual" });
+    res.json({ success: true, entry });
+  } catch (error) {
+    console.error("Log cash entry error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to log cash entry" });
   }
 });
 

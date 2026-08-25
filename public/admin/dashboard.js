@@ -1527,6 +1527,70 @@ function renderPurchases() {
   }).catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
 }
 
+// ---------------- Cash Ledger (owner-only) ----------------
+
+function renderCashLedger() {
+  const root = document.getElementById("cash-ledger-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  fetch("/api/admin/production/cash-ledger")
+    .then((res) => res.json())
+    .then((data) => {
+      if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; return; }
+
+      let html = '<div class="section-card"><h2>Cash Ledger <span class="hint">— running balance over the last 100 entries</span></h2>' +
+        '<div class="stat-card" style="max-width:220px;margin-bottom:16px;"><div class="num">' + money(data.balance) + '</div><div class="label">Cash Balance</div></div>' +
+        '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Record a Manual Entry</h3>' +
+        '<div class="detail-grid" style="margin-bottom:14px;">' +
+        '<div><span>Type</span><select id="cash-type-select" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="receipt">Receipt (cash in)</option><option value="disbursement">Disbursement (cash out)</option></select></div>' +
+        '<div><span>Amount</span><input type="number" step="0.01" id="cash-amount-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Category</span><input type="text" id="cash-category-input" placeholder="e.g. rent, sale, misc" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        '<div><span>Description</span><input type="text" id="cash-description-input" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></div>' +
+        "</div>" +
+        '<button id="cash-submit-btn" class="btn">Add Entry</button> <span id="cash-msg" style="font-size:12px;"></span>';
+
+      html += '<h3 style="font-size:12px;color:var(--muted);margin:20px 0 8px;">Recent Entries</h3>';
+      if (data.entries.length === 0) {
+        html += '<p class="empty">No cash entries yet.</p>';
+      } else {
+        html += '<div class="table-scroll"><table><tr><th>Date</th><th>Type</th><th>Category</th><th>Description</th><th>Amount</th><th>By</th></tr>' +
+          data.entries.map((e) => {
+            const sign = e.type === "receipt" ? "+" : "−";
+            const color = e.type === "receipt" ? "#2e7d32" : "#c0392b";
+            return "<tr><td>" + new Date(e.createdAt).toLocaleString() + "</td><td>" +
+              '<span class="badge ' + (e.type === "receipt" ? "neutral" : "attn") + '">' + esc(e.type) + "</span></td><td>" + esc(e.category) + "</td><td>" +
+              esc(e.description || "—") + '</td><td style="color:' + color + ';font-weight:600;">' + sign + money(e.amount) + "</td><td>" + esc(e.recordedBy) + "</td></tr>";
+          }).join("") +
+          "</table></div>";
+      }
+      html += "</div>";
+
+      root.innerHTML = html;
+
+      document.getElementById("cash-submit-btn").addEventListener("click", () => {
+        const msg = document.getElementById("cash-msg");
+        const type = document.getElementById("cash-type-select").value;
+        const amount = document.getElementById("cash-amount-input").value;
+        const category = document.getElementById("cash-category-input").value.trim();
+        const description = document.getElementById("cash-description-input").value.trim();
+
+        if (!amount) { msg.textContent = "Amount is required."; msg.style.color = "#c0392b"; return; }
+
+        msg.textContent = "Saving…";
+        msg.style.color = "var(--muted)";
+        fetch("/api/admin/production/cash-ledger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type, amount, category, description }),
+        })
+          .then((res) => res.json())
+          .then((result) => { if (result.success) renderCashLedger(); else { msg.textContent = result.error || "Failed."; msg.style.color = "#c0392b"; } })
+          .catch(() => { msg.textContent = "Failed."; msg.style.color = "#c0392b"; });
+      });
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
+}
+
 function renderProducts() {
   const root = document.getElementById("products-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -1950,6 +2014,21 @@ function wireTabs() {
   });
 }
 
+function wireSubTabs() {
+  document.querySelectorAll(".sub-tabs").forEach((nav) => {
+    const panelGroup = nav.parentElement;
+    nav.querySelectorAll(".sub-tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-sub-tab");
+        nav.querySelectorAll(".sub-tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        panelGroup.querySelectorAll(".sub-tab-panel").forEach((panel) => {
+          panel.classList.toggle("active", panel.getAttribute("data-sub-tab-panel") === target);
+        });
+      });
+    });
+  });
+}
+
 // ---------------- User menu ----------------
 
 function renderUserMenu() {
@@ -1998,6 +2077,7 @@ function init() {
       renderUserMenu();
       wireSearch();
       wireTabs();
+      wireSubTabs();
       renderSettings();
       renderUsers();
       if (currentUser.role === "owner") {
@@ -2015,6 +2095,7 @@ function init() {
         renderProductionRuns();
         renderSuppliers();
         renderPurchases();
+        renderCashLedger();
         renderActivity();
       }
       renderBostaSummary();
