@@ -163,6 +163,44 @@ function revenueChartSvg(trend) {
   );
 }
 
+// "Since last week" in one glance — purely from data the Overview call
+// already fetches, no extra requests.
+function renderWeeklyDigest(data) {
+  const trend = data.revenue_trend;
+  if (!trend) return "";
+
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const sumRange = (fromDaysAgo, toDaysAgo) =>
+    trend
+      .filter((d) => {
+        const t = new Date(d.day).getTime();
+        return t >= now - fromDaysAgo * day && t < now - toDaysAgo * day;
+      })
+      .reduce((sum, d) => sum + d.total, 0);
+
+  const thisWeek = sumRange(7, 0);
+  const lastWeek = sumRange(14, 7);
+  const delta = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null;
+
+  const lowStockCount = (data.low_stock || []).length;
+  const returningCount = (data.status_counts || {}).returning_from_delivery || 0;
+
+  const field = (label, valueHtml) =>
+    '<div><span style="display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">' + label + '</span><div style="font-size:14px;color:var(--ink);">' + valueHtml + "</div></div>";
+
+  const parts = [];
+  if ("revenue" in data.stats) {
+    parts.push(field("Revenue, Last 7 Days", money(thisWeek) +
+      (delta != null ? ' <span style="color:' + (delta >= 0 ? "#2e7d32" : "#c0392b") + ';font-size:12px;">(' + (delta >= 0 ? "+" : "") + delta + "% vs prior week)</span>" : "")));
+  }
+  parts.push(field("Low Stock Items", lowStockCount));
+  parts.push(field("Returning to You", returningCount));
+
+  return '<div class="section-card"><h2>This Week <span class="hint">— a quick pulse, not a replacement for the full tabs</span></h2>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;">' + parts.join("") + "</div></div>";
+}
+
 function renderOverview(data) {
   const root = document.getElementById("overview-root");
   const s = data.stats;
@@ -199,7 +237,8 @@ function renderOverview(data) {
       '<div class="chart-wrap">' + revenueChartSvg(data.revenue_trend) + "</div></div>"
     : "";
 
-  root.innerHTML = statsHtml +
+  root.innerHTML = renderWeeklyDigest(data) +
+    statsHtml +
     returningHtml +
     '<div class="section-card" style="padding:14px 20px;">' + statusPills + "</div>" +
     chartHtml;
@@ -574,7 +613,55 @@ function renderBostaSummaryResults(body, rows) {
     html += '<p class="empty">Nothing to flag among the scanned orders.</p>';
   }
 
+  // Both of these are aggregates over the same already-fetched scan
+  // results — no extra API calls needed.
+  html += renderCourierPerformance(ok);
+  html += renderGovernorateAccuracy(ok);
+
   body.innerHTML = html;
+}
+
+function renderCourierPerformance(ok) {
+  const byCourier = {};
+  ok.forEach((r) => {
+    const firstAttempt = r.result.attempts && r.result.attempts[0];
+    const courier = firstAttempt && firstAttempt.courierName;
+    if (!courier) return;
+    if (!byCourier[courier]) byCourier[courier] = { total: 0, delivered: 0 };
+    byCourier[courier].total++;
+    if (r.result.state && r.result.state.value === "Delivered") byCourier[courier].delivered++;
+  });
+
+  const couriers = Object.keys(byCourier);
+  if (couriers.length === 0) return "";
+
+  return '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Courier Performance <span class="hint">— from this scan\'s delivery attempts</span></h3>' +
+    '<div class="table-scroll" style="margin-bottom:16px;"><table><tr><th>Courier</th><th>Orders</th><th>Delivered</th></tr>' +
+    couriers.map((c) => "<tr><td>" + esc(c) + "</td><td>" + byCourier[c].total + "</td><td>" + byCourier[c].delivered + " / " + byCourier[c].total + "</td></tr>").join("") +
+    "</table></div>";
+}
+
+function renderGovernorateAccuracy(ok) {
+  const byGov = {};
+  ok.forEach((r) => {
+    if (typeof r.result.shipmentFees !== "number" || typeof r.order.shipping_cost !== "number") return;
+    const gov = r.order.government || "Unknown";
+    if (!byGov[gov]) byGov[gov] = { count: 0, chargedSum: 0, billedSum: 0 };
+    byGov[gov].count++;
+    byGov[gov].chargedSum += r.order.shipping_cost;
+    byGov[gov].billedSum += r.result.shipmentFees;
+  });
+
+  const govs = Object.keys(byGov);
+  if (govs.length === 0) return "";
+
+  return '<h3 style="font-size:12px;color:var(--muted);margin:16px 0 8px;">Shipping Accuracy by Governorate <span class="hint">— from this scan only, not your full order history</span></h3>' +
+    '<div class="table-scroll"><table><tr><th>Governorate</th><th>Orders</th><th>Avg Charged</th><th>Avg Billed by Bosta</th></tr>' +
+    govs.map((g) => {
+      const d = byGov[g];
+      return "<tr><td>" + esc(g) + "</td><td>" + d.count + "</td><td>" + money(Math.round(d.chargedSum / d.count)) + "</td><td>" + money(Math.round(d.billedSum / d.count)) + "</td></tr>";
+    }).join("") +
+    "</table></div>";
 }
 
 function renderOrders(data) {
@@ -877,8 +964,8 @@ function renderProducts() {
       if (!productsData.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load products.</p></div>'; return; }
       const categories = categoriesData.success ? categoriesData.categories : [];
 
-      let html = '<div class="section-card"><h2>Products <span class="hint">— edit price, sale price, stock, and categories directly (writes to Easy Orders)</span></h2>' +
-        '<div class="table-scroll"><table><tr><th>Product</th><th>Price</th><th>Sale Price</th><th>Stock</th><th>Add Category</th><th></th></tr>';
+      let html = '<div class="section-card"><h2>Products <span class="hint">— edit price, sale price, stock, visibility, and categories directly (writes to Easy Orders)</span></h2>' +
+        '<div class="table-scroll"><table><tr><th>Product</th><th>Price</th><th>Sale Price</th><th>Stock</th><th>Visible</th><th>Add Category</th><th></th></tr>';
 
       productsData.products.forEach((p) => {
         html += '<tr data-product-id="' + p.id + '">' +
@@ -886,6 +973,7 @@ function renderProducts() {
           '<td><input type="number" min="0" step="0.01" class="prod-price" value="' + (p.price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
           '<td><input type="number" min="0" step="0.01" class="prod-sale-price" value="' + (p.sale_price ?? "") + '" style="width:90px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);" placeholder="none"></td>' +
           '<td><input type="number" min="0" step="1" class="prod-quantity" value="' + (p.quantity ?? "") + '" style="width:80px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"></td>' +
+          '<td><label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" class="prod-visible" ' + (p.hidden ? "" : "checked") + '></label></td>' +
           '<td><select class="prod-add-category" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);"><option value="">— pick —</option>' +
             categories.map((c) => '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>').join("") +
             '</select> <button class="prod-add-category-btn" style="padding:6px 10px;">Add</button></td>' +
@@ -917,6 +1005,7 @@ function renderProducts() {
           const body = {
             price: row.querySelector(".prod-price").value,
             quantity: row.querySelector(".prod-quantity").value,
+            hidden: !row.querySelector(".prod-visible").checked,
           };
           if (salePriceRaw !== "") body.sale_price = salePriceRaw;
 

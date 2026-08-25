@@ -93,6 +93,11 @@ function render(order, events, bostaLive) {
 
   html += '<div class="section-card"><h2>Items</h2><div class="table-scroll"><table class="od-items-table"><tr><th>Product</th><th>Qty</th>' + (showMoney ? "<th>Price</th>" : "") + '</tr>' + items + '</table></div></div>';
 
+  html += '<div class="section-card"><h2>Leave a Note <span class="hint">— posted to this order on Easy Orders, visible to whoever checks it next</span></h2>' +
+    '<textarea id="od-note-input" rows="3" placeholder="e.g. Customer confirmed via WhatsApp, ship ASAP" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;background:var(--card);color:var(--ink);"></textarea>' +
+    '<div style="margin-top:10px;"><button id="od-note-btn" class="btn">Add Note</button> <span id="od-note-msg" style="font-size:12px;"></span></div>' +
+    "</div>";
+
   const entries = buildUnifiedTimeline(order, events, bostaLive);
   html += '<div class="section-card"><h2>Unified Timeline <span class="hint">— Easy Orders + our webhook history' + (bostaLive && bostaLive.success ? " + Bosta's live audit log" : "") + '</span></h2>' + renderTimeline(entries) + '</div>';
 
@@ -122,6 +127,41 @@ function render(order, events, bostaLive) {
   }
 
   document.getElementById("od-page").innerHTML = html;
+
+  document.getElementById("od-note-btn").addEventListener("click", () => {
+    const input = document.getElementById("od-note-input");
+    const msg = document.getElementById("od-note-msg");
+    const note = input.value.trim();
+    if (!note) return;
+
+    const btn = document.getElementById("od-note-btn");
+    btn.disabled = true;
+    msg.textContent = "Adding…";
+    msg.style.color = "var(--muted)";
+
+    fetch("/api/admin/orders/" + order.order_id + "/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    })
+      .then((res) => res.json())
+      .then((result) => {
+        btn.disabled = false;
+        if (result.success) {
+          msg.textContent = "Added.";
+          msg.style.color = "#2e7d32";
+          input.value = "";
+        } else {
+          msg.textContent = result.error || "Failed.";
+          msg.style.color = "#c0392b";
+        }
+      })
+      .catch(() => {
+        btn.disabled = false;
+        msg.textContent = "Failed.";
+        msg.style.color = "#c0392b";
+      });
+  });
 }
 
 function statusBadgeHtml(order) {

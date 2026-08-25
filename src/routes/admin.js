@@ -9,6 +9,7 @@ const {
   getOrder,
   getOrderByShortId,
   updateOrderStatus,
+  addOrderNote,
 } = require("../easyorders");
 const {
   getTrackingEvents,
@@ -432,6 +433,20 @@ router.get("/orders/:orderId", async (req, res) => {
   }
 });
 
+router.post("/orders/:orderId/notes", async (req, res) => {
+  try {
+    const note = String(req.body?.note || "").trim();
+    if (!note) {
+      return res.status(400).json({ success: false, error: "note is required" });
+    }
+    await addOrderNote(req.params.orderId, `[${req.user.username}] ${note}`, "public");
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Add order note error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to add note" });
+  }
+});
+
 // Live pull straight from Bosta (not our webhook-derived history) — used
 // on demand from an order's expanded row, since polling this for every
 // order on every page load would be slow and needlessly hit Bosta's API.
@@ -803,8 +818,12 @@ router.post("/products", requireOwner, async (req, res) => {
 
 router.patch("/products/:productId", requireOwner, async (req, res) => {
   try {
-    const { price, sale_price, quantity, categories } = req.body || {};
+    const { price, sale_price, quantity, categories, hidden } = req.body || {};
     const fields = {};
+
+    if (hidden !== undefined) {
+      fields.hidden = Boolean(hidden);
+    }
 
     if (price !== undefined) {
       const n = Number(price);
