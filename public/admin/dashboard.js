@@ -361,25 +361,67 @@ function renderPickups() {
     .then((data) => {
       if (!data.success) { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load pickups.</p></div>'; return; }
 
+      let html = "";
       if (data.pickups.length === 0) {
-        root.innerHTML = '<div class="section-card"><h2>Pickups</h2><p class="empty">No scheduled pickups found among your recent orders.</p></div>';
+        html = '<div class="section-card"><h2>Pickups</h2><p class="empty">No scheduled pickups found among your recent orders.</p></div>';
+      } else {
+        html = '<div class="section-card"><h2>Pickups <span class="hint">— only deliveries matching your own orders (other brands on the same Bosta account are filtered out)</span></h2>' +
+          '<div class="table-scroll"><table><tr><th>Date</th><th>Time Slot</th><th>State</th><th>Your Parcels</th></tr>';
+
+        data.pickups.forEach((p) => {
+          html += "<tr><td>" + esc(p.scheduledDate || "—") + "</td><td>" + esc(p.scheduledTimeSlot || "—") + "</td><td>" + esc(String(p.state ?? "—")) + "</td><td>" + p.deliveries.length + "</td></tr>";
+          html += '<tr class="detail-row"><td colspan="4"><div class="table-scroll"><table><tr><th>Tracking #</th><th>Order Ref</th><th>Customer</th></tr>' +
+            p.deliveries.map((d) => "<tr><td>" + esc(d.trackingNumber) + "</td><td>" + esc(d.businessReference || "—") + "</td><td>" + esc(d.receiverName || "—") + "</td></tr>").join("") +
+            "</table></div></td></tr>";
+        });
+
+        html += "</table></div></div>";
+      }
+
+      if (currentUser.role === "owner") {
+        html += '<div class="section-card" id="circle-v-package-card">' +
+          '<div class="section-head"><h2>Circle V — Package Size Check <span class="hint">— tracking # and package type only, no customer info</span></h2>' +
+          '<button id="circle-v-check-btn" class="btn">Check Package Sizes</button></div>' +
+          '<div id="circle-v-check-body"><p class="empty">Click to scan Circle V\'s deliveries in the same pickups for size mismatches.</p></div>' +
+          "</div>";
+      }
+
+      root.innerHTML = html;
+
+      const circleVBtn = document.getElementById("circle-v-check-btn");
+      if (circleVBtn) circleVBtn.addEventListener("click", runCircleVPackageCheck);
+    })
+    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load pickups.</p></div>'; });
+}
+
+function runCircleVPackageCheck() {
+  const btn = document.getElementById("circle-v-check-btn");
+  const body = document.getElementById("circle-v-check-body");
+  btn.disabled = true;
+  body.innerHTML = '<p class="empty">Scanning…</p>';
+
+  fetch("/api/admin/pickups/other-brand-package-check")
+    .then((res) => res.json())
+    .then((data) => {
+      btn.disabled = false;
+      if (!data.success) { body.innerHTML = '<p class="empty">Failed to check.</p>'; return; }
+
+      if (data.flagged.length === 0) {
+        body.innerHTML = '<p class="empty">No size mismatches found among Circle V\'s recent deliveries.</p>';
         return;
       }
 
-      let html = '<div class="section-card"><h2>Pickups <span class="hint">— only deliveries matching your own orders (other brands on the same Bosta account are filtered out)</span></h2>' +
-        '<div class="table-scroll"><table><tr><th>Date</th><th>Time Slot</th><th>State</th><th>Your Parcels</th></tr>';
-
-      data.pickups.forEach((p) => {
-        html += "<tr><td>" + esc(p.scheduledDate || "—") + "</td><td>" + esc(p.scheduledTimeSlot || "—") + "</td><td>" + esc(String(p.state ?? "—")) + "</td><td>" + p.deliveries.length + "</td></tr>";
-        html += '<tr class="detail-row"><td colspan="4"><div class="table-scroll"><table><tr><th>Tracking #</th><th>Order Ref</th><th>Customer</th></tr>' +
-          p.deliveries.map((d) => "<tr><td>" + esc(d.trackingNumber) + "</td><td>" + esc(d.businessReference || "—") + "</td><td>" + esc(d.receiverName || "—") + "</td></tr>").join("") +
-          "</table></div></td></tr>";
-      });
-
-      html += "</table></div></div>";
-      root.innerHTML = html;
+      body.innerHTML = '<div class="table-scroll"><table><tr><th>Tracking #</th><th>Package Type</th><th>Weight</th></tr>' +
+        data.flagged.map((f) =>
+          '<tr class="attention"><td>' + esc(f.trackingNumber) + '</td><td><span class="badge attn">' + esc(f.packageType) + '</span></td><td>' +
+          (f.weight != null ? f.weight + "g" : "—") + "</td></tr>"
+        ).join("") +
+        "</table></div>";
     })
-    .catch(() => { root.innerHTML = '<div class="section-card"><p class="empty">Failed to load pickups.</p></div>'; });
+    .catch(() => {
+      btn.disabled = false;
+      body.innerHTML = '<p class="empty">Failed to check.</p>';
+    });
 }
 
 const BOSTA_SUMMARY_SCAN_LIMIT = 25;

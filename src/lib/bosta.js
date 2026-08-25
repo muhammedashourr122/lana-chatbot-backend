@@ -105,9 +105,48 @@ async function getPickupsForTrackingNumbers(trackingNumbers, maxPages = 3) {
   return matchedPickups;
 }
 
+// Same account-wide pickups list, but this time collecting the *other*
+// side: deliveries that do NOT match our own known tracking numbers —
+// i.e. Circle V's (or any other brand sharing this Bosta account).
+// Deliberately narrow in what it returns: only enough to flag a
+// package-size mismatch (tracking number + package type), never the
+// receiver's name/phone — those stay filtered out even here, since this
+// is a size-check, not a reason to expose that brand's customer data.
+async function checkOtherBrandPackageSizes(ourTrackingNumbers, maxPages = 3, maxChecks = 25) {
+  const ours = new Set(ourTrackingNumbers);
+  const otherTrackingNumbers = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const data = await getPickupsPage(page);
+    const list = data?.list || [];
+    if (list.length === 0) break;
+
+    list.forEach((pickup) => {
+      (pickup.deliveries || []).forEach((d) => {
+        if (!ours.has(d.trackingNumber) && !otherTrackingNumbers.includes(d.trackingNumber)) {
+          otherTrackingNumbers.push(d.trackingNumber);
+        }
+      });
+    });
+
+    if (data.total != null && page * list.length >= data.total) break;
+    if (otherTrackingNumbers.length >= maxChecks) break;
+  }
+
+  const toCheck = otherTrackingNumbers.slice(0, maxChecks);
+  const details = await Promise.all(
+    toCheck.map((tn) => getDeliveryByTrackingNumber(tn).catch(() => null))
+  );
+
+  return details
+    .map((delivery, i) => (delivery ? { trackingNumber: toCheck[i], packageType: delivery.specs?.packageType || null, weight: delivery.specs?.weight || null } : null))
+    .filter((d) => d && d.packageType && d.packageType.toLowerCase() !== "small");
+}
+
 module.exports = {
   getDeliveryByTrackingNumber,
   getAwbPdfByTrackingNumber,
   getAwbPdfByTrackingNumbers,
   getPickupsForTrackingNumbers,
+  checkOtherBrandPackageSizes,
 };

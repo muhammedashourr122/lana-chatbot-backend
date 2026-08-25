@@ -18,7 +18,7 @@ const { BOSTA_STATE_TO_EASYORDERS_STATUS } = require("./webhooks");
 const { requireOwner } = require("./auth");
 const usersStore = require("../lib/users-store");
 const homepageContentStore = require("../lib/homepage-content-store");
-const { getDeliveryByTrackingNumber, getPickupsForTrackingNumbers } = require("../lib/bosta");
+const { getDeliveryByTrackingNumber, getPickupsForTrackingNumbers, checkOtherBrandPackageSizes } = require("../lib/bosta");
 
 const router = express.Router();
 
@@ -496,6 +496,22 @@ router.get("/pickups", async (req, res) => {
   } catch (error) {
     console.error("Pickups fetch error:", error.response?.data || error.message);
     res.status(502).json({ success: false, error: "Unable to fetch pickups from Bosta" });
+  }
+});
+
+// Package-size check for the OTHER brand(s) sharing this Bosta account
+// (Circle V) — deliberately returns only tracking number + package
+// type, never receiver name/phone, even though this is explicitly
+// requested by the account owner (not a third party).
+router.get("/pickups/other-brand-package-check", requireOwner, async (req, res) => {
+  try {
+    const data = await getAdminData();
+    const ourTrackingNumbers = data.orders.map((o) => o.bosta?.tracking_number).filter(Boolean);
+    const flagged = await checkOtherBrandPackageSizes(ourTrackingNumbers);
+    res.json({ success: true, flagged });
+  } catch (error) {
+    console.error("Other-brand package check error:", error.response?.data || error.message);
+    res.status(502).json({ success: false, error: "Unable to check package sizes" });
   }
 });
 
