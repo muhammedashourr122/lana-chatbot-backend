@@ -1440,6 +1440,104 @@ router.post("/production/stock-adjustments/product", requireOwner, async (req, r
   }
 });
 
+// ---------------- Reports ----------------
+
+// Real gross profit using actual production cost (weighted average unit
+// cost from logged production runs) instead of guessing at margins.
+// Products that have never been produced through the Production tab have
+// no cost data yet, so they're shown but excluded from the COGS total —
+// better to flag a gap than silently pretend it's zero.
+router.get("/production/reports/gross-profit", requireOwner, async (req, res) => {
+  try {
+    const [adminData, runs] = await Promise.all([
+      getAdminData(),
+      productionRunsStore.getProductionRuns(500),
+    ]);
+
+    const revenue = adminData.stats.revenue;
+    const topProducts = adminData.top_products || [];
+
+    const costTotals = {};
+    runs.forEach((r) => {
+      if (!costTotals[r.productName]) costTotals[r.productName] = { totalCost: 0, totalQty: 0 };
+      costTotals[r.productName].totalCost += r.totalCost;
+      costTotals[r.productName].totalQty += r.quantityProduced;
+    });
+
+    let totalCOGS = 0;
+    const breakdown = topProducts.map((p) => {
+      const c = costTotals[p.name];
+      const avgUnitCost = c && c.totalQty > 0 ? c.totalCost / c.totalQty : null;
+      const cogs = avgUnitCost != null ? avgUnitCost * p.qty : null;
+      if (cogs != null) totalCOGS += cogs;
+      return { name: p.name, qtySold: p.qty, avgUnitCost, cogs };
+    });
+
+    res.json({
+      success: true,
+      revenue,
+      totalCOGS: Math.round(totalCOGS * 100) / 100,
+      grossProfit: Math.round((revenue - totalCOGS) * 100) / 100,
+      breakdown,
+    });
+  } catch (error) {
+    console.error("Gross profit report error:", error.response?.data || error.message);
+    res.status(500).json({ success: false, error: "Unable to compute gross profit" });
+  }
+});
+
+// A single chronological journal of everything that moved stock or cash —
+// production runs, purchases, stock corrections, cash entries — so there's
+// one feed to scan instead of checking five separate tabs.
+router.get("/production/reports/daily-movement", requireOwner, async (req, res) => {
+  try {
+    const [runs, purchases, adjustments, cashEntries] = await Promise.all([
+      productionRunsStore.getProductionRuns(50),
+      purchasesStore.getPurchases(50),
+      stockAdjustmentsStore.getStockAdjustments(50),
+      cashLedgerStore.getCashEntries(50),
+    ]);
+
+    const movement = [
+      ...runs.map((r) => ({
+        type: "production",
+        createdAt: r.createdAt,
+        description: `Produced ${r.quantityProduced} × ${r.productName}`,
+        amount: -r.totalCost,
+        by: r.producedBy,
+      })),
+      ...purchases.map((p) => ({
+        type: "purchase",
+        createdAt: p.createdAt,
+        description: `Purchased from ${p.supplierName} (${p.items.length} item${p.items.length === 1 ? "" : "s"})`,
+        amount: -p.totalAmount,
+        by: p.loggedBy,
+      })),
+      ...adjustments.map((a) => ({
+        type: "adjustment",
+        createdAt: a.createdAt,
+        description: `${a.targetType === "raw_material" ? "Material" : "Product"} "${a.targetName}" corrected: ${a.previousQty} → ${a.newQty} (${a.reason})`,
+        amount: null,
+        by: a.adjustedBy,
+      })),
+      ...cashEntries.map((c) => ({
+        type: "cash",
+        createdAt: c.createdAt,
+        description: c.description || c.category,
+        amount: c.type === "receipt" ? c.amount : -c.amount,
+        by: c.recordedBy,
+      })),
+    ]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 100);
+
+    res.json({ success: true, movement });
+  } catch (error) {
+    console.error("Daily movement report error:", error.message);
+    res.status(500).json({ success: false, error: "Unable to load daily movement" });
+  }
+});
+
 router.VALID_ORDER_STATUSES = VALID_ORDER_STATUSES;
 
 module.exports = router;

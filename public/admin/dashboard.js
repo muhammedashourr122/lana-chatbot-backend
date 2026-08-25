@@ -1832,6 +1832,68 @@ function renderStockCount() {
   }).catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load.</p></div>'; });
 }
 
+// ---------------- Reports (owner-only) ----------------
+
+const MOVEMENT_LABELS = { production: "Production", purchase: "Purchase", adjustment: "Stock Correction", cash: "Cash" };
+
+function renderProductionReports() {
+  const root = document.getElementById("production-reports-root");
+  root.innerHTML = '<div class="section-card"><p class="empty">Loading…</p></div>';
+
+  Promise.all([
+    fetch("/api/admin/production/reports/gross-profit").then((res) => res.json()),
+    fetch("/api/admin/production/reports/daily-movement").then((res) => res.json()),
+  ]).then(([profitData, movementData]) => {
+    let html = "";
+
+    if (profitData.success) {
+      const profitColor = profitData.grossProfit >= 0 ? "#2e7d32" : "#c0392b";
+      html += '<div class="section-card"><h2>Gross Profit <span class="hint">— revenue minus actual production cost, from logged production runs</span></h2>' +
+        '<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;">' +
+        '<div class="stat-card"><div class="num">' + money(profitData.revenue) + '</div><div class="label">Revenue (all orders)</div></div>' +
+        '<div class="stat-card"><div class="num">' + money(profitData.totalCOGS) + '</div><div class="label">Cost of Goods Sold</div></div>' +
+        '<div class="stat-card"><div class="num" style="color:' + profitColor + ';">' + money(profitData.grossProfit) + '</div><div class="label">Gross Profit</div></div>' +
+        "</div>";
+
+      if (profitData.breakdown.length === 0) {
+        html += '<p class="empty">No sales data yet.</p>';
+      } else {
+        html += '<div class="table-scroll"><table><tr><th>Product</th><th>Units Sold</th><th>Avg Unit Cost</th><th>Est. COGS</th></tr>' +
+          profitData.breakdown.map((b) =>
+            "<tr><td>" + esc(b.name) + "</td><td>" + b.qtySold + "</td><td>" +
+            (b.avgUnitCost != null ? money(Math.round(b.avgUnitCost * 100) / 100) : '<span class="badge attn">no cost data</span>') + "</td><td>" +
+            (b.cogs != null ? money(Math.round(b.cogs * 100) / 100) : "—") + "</td></tr>"
+          ).join("") +
+          "</table></div>" +
+          '<p class="hint" style="margin-top:10px;">Products with "no cost data" have never gone through a Production Run, so their cost isn\'t counted in COGS yet — gross profit above is understated until they do.</p>';
+      }
+      html += "</div>";
+    } else {
+      html += '<div class="section-card"><p class="empty">Failed to load gross profit report.</p></div>';
+    }
+
+    if (movementData.success) {
+      html += '<div class="section-card"><h2>Daily Movement <span class="hint">— production, purchases, stock corrections, and cash in one feed</span></h2>';
+      if (movementData.movement.length === 0) {
+        html += '<p class="empty">Nothing logged yet.</p>';
+      } else {
+        html += '<div class="table-scroll"><table><tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th><th>By</th></tr>' +
+          movementData.movement.map((m) => {
+            const amountCell = m.amount == null ? "—" : (m.amount >= 0 ? '<span style="color:#2e7d32;font-weight:600;">+' + money(m.amount) + '</span>' : '<span style="color:#c0392b;font-weight:600;">' + money(m.amount) + '</span>');
+            return "<tr><td>" + new Date(m.createdAt).toLocaleString() + '</td><td><span class="badge neutral">' + esc(MOVEMENT_LABELS[m.type] || m.type) + "</span></td><td>" +
+              esc(m.description) + "</td><td>" + amountCell + "</td><td>" + esc(m.by) + "</td></tr>";
+          }).join("") +
+          "</table></div>";
+      }
+      html += "</div>";
+    } else {
+      html += '<div class="section-card"><p class="empty">Failed to load daily movement.</p></div>';
+    }
+
+    root.innerHTML = html;
+  }).catch((err) => { console.error(err); root.innerHTML = '<div class="section-card"><p class="empty">Failed to load reports.</p></div>'; });
+}
+
 function renderProducts() {
   const root = document.getElementById("products-root");
   if (currentUser.role !== "owner") { root.innerHTML = ""; return; }
@@ -2338,6 +2400,7 @@ function init() {
         renderPurchases();
         renderCashLedger();
         renderStockCount();
+        renderProductionReports();
         renderActivity();
       }
       renderBostaSummary();
