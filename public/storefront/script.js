@@ -233,7 +233,7 @@
     // If a stale copy is orphaned (detached from the current buy button,
     // e.g. after client-side navigation to a different product), rebuild.
     if (existing) {
-      if (existing.previousElementSibling === buyBtn) return;
+      if (existing.nextElementSibling === buyBtn) return;
       existing.remove();
     }
 
@@ -248,7 +248,7 @@
     el.textContent =
       "Estimated delivery: " + formatDeliveryDate(earliest) + " – " + formatDeliveryDate(latest);
 
-    buyBtn.insertAdjacentElement("afterend", el);
+    buyBtn.insertAdjacentElement("beforebegin", el);
   }
 
   /* =======================================================
@@ -712,9 +712,6 @@
     var buyBtn = document.querySelector(".checkout_btn");
     if (!buyBtn) return;
 
-    // Anchor after the delivery estimate if present, else the buy button.
-    var anchor = document.getElementById("lana-delivery-estimate") || buyBtn;
-
     var notes = SCENT_NOTES[slug];
     var tiers = [
       { label: "Top", value: notes.top },
@@ -736,7 +733,10 @@
       el.appendChild(col);
     });
 
-    anchor.insertAdjacentElement("afterend", el);
+    // Always anchor directly above the buy button — showDeliveryEstimate
+    // runs first and already sits there, so this ends up above it too,
+    // giving the order: scent notes, delivery estimate, buy button.
+    buyBtn.insertAdjacentElement("beforebegin", el);
   }
 
   /* =======================================================
