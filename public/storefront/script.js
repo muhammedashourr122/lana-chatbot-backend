@@ -229,11 +229,19 @@
     var buyBtn = document.querySelector(".checkout_btn");
     if (!buyBtn) return;
 
+    // The button row is a flex-col-reverse container (Add to cart and Click
+    // here to buy are both children of it), so DOM order is the *opposite*
+    // of visual order — the last DOM child renders at the top. To land
+    // above both buttons, this has to be appended as the last child of
+    // that container, not inserted next to either button directly.
+    var container = buyBtn.closest(".flex-col-reverse") || buyBtn.parentElement;
+    if (!container) return;
+
     var existing = document.getElementById("lana-delivery-estimate");
-    // If a stale copy is orphaned (detached from the current buy button,
+    // If a stale copy is orphaned (detached from the current container,
     // e.g. after client-side navigation to a different product), rebuild.
     if (existing) {
-      if (existing.nextElementSibling === buyBtn) return;
+      if (existing.parentElement === container) return;
       existing.remove();
     }
 
@@ -248,7 +256,7 @@
     el.textContent =
       "Estimated delivery: " + formatDeliveryDate(earliest) + " – " + formatDeliveryDate(latest);
 
-    buyBtn.insertAdjacentElement("beforebegin", el);
+    container.appendChild(el);
   }
 
   /* =======================================================
@@ -712,6 +720,12 @@
     var buyBtn = document.querySelector(".checkout_btn");
     if (!buyBtn) return;
 
+    // Same flex-col-reverse container as showDeliveryEstimate — appending
+    // last in DOM puts this on top visually, above the delivery estimate
+    // (which ran first and is already appended) and both buttons.
+    var container = buyBtn.closest(".flex-col-reverse") || buyBtn.parentElement;
+    if (!container) return;
+
     var notes = SCENT_NOTES[slug];
     var tiers = [
       { label: "Top", value: notes.top },
@@ -733,10 +747,7 @@
       el.appendChild(col);
     });
 
-    // Always anchor directly above the buy button — showDeliveryEstimate
-    // runs first and already sits there, so this ends up above it too,
-    // giving the order: scent notes, delivery estimate, buy button.
-    buyBtn.insertAdjacentElement("beforebegin", el);
+    container.appendChild(el);
   }
 
   /* =======================================================
