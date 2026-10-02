@@ -81,10 +81,13 @@ const SECTIONS = [
       { key: "collections.subtitle", label: "Subtitle", type: "textarea", wide: true },
       { key: "collections.her.label", label: "For Her — label", type: "text" },
       { key: "collections.her.productSlug", label: "For Her — product image", type: "product" },
+      { key: "collections.her.collectionLink", label: "For Her — collection link", type: "text", wide: true },
       { key: "collections.him.label", label: "For Him — label", type: "text" },
       { key: "collections.him.productSlug", label: "For Him — product image", type: "product" },
+      { key: "collections.him.collectionLink", label: "For Him — collection link", type: "text", wide: true },
       { key: "collections.unisex.label", label: "Unisex — label", type: "text" },
       { key: "collections.unisex.productSlug", label: "Unisex — product image", type: "product" },
+      { key: "collections.unisex.collectionLink", label: "Unisex — collection link", type: "text", wide: true },
     ],
   },
   {

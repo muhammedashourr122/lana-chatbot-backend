@@ -34,9 +34,21 @@ const DEFAULT_HOMEPAGE_CONTENT = {
     kicker: "Discover Lana's Beauty",
     title: 'Find Your <em>Signature</em>',
     subtitle: "Three fragrance worlds. One made for you. Explore the collection that speaks your language.",
-    her: { label: "Feminine Fragrances", productSlug: "body-splash-pink-shadow" },
-    him: { label: "Masculine Fragrances", productSlug: "body-splash-shadow-noir" },
-    unisex: { label: "Genderless Fragrances", productSlug: "" },
+    her: {
+      label: "Feminine Fragrances",
+      productSlug: "body-splash-pink-shadow",
+      collectionLink: "https://www.lana-beauty.com/collections/for-her",
+    },
+    him: {
+      label: "Masculine Fragrances",
+      productSlug: "body-splash-shadow-noir",
+      collectionLink: "https://www.lana-beauty.com/collections/for-him",
+    },
+    unisex: {
+      label: "Genderless Fragrances",
+      productSlug: "",
+      collectionLink: "https://www.lana-beauty.com/collections/unisex",
+    },
   },
   offers: {
     box1: {

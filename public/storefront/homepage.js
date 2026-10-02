@@ -154,11 +154,18 @@
         var conf = content.collections[key];
         if (!conf) return;
         setText("coll-" + key + "-label", conf.label);
+
+        // The chosen product supplies the card's artwork only. The card
+        // links to the collection, never to that one product — pointing
+        // it at the product page meant picking a collection image
+        // silently hijacked where the whole card went.
         var product = findProduct(products, conf.productSlug);
         if (product) {
           setAttr("coll-" + key + "-image", "src", product.thumb);
           setAttr("coll-" + key + "-image", "alt", conf.label);
-          setAttr("coll-" + key + "-link", "href", productUrl(product.slug));
+        }
+        if (conf.collectionLink) {
+          setAttr("coll-" + key + "-link", "href", conf.collectionLink);
         }
       });
     }
